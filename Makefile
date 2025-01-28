@@ -1,7 +1,7 @@
 make:
 	sth -o shaders.h vertex.glsl fragment.glsl
-	gcc -o sdltest -g sdltest.c matrix.c -lSDL2 -lGL -lglut -lopenblas -lm
+	gcc -o sdl -g sdl.c matrix.c -lSDL2 -lGL -lglut -lopenblas -lm
 install: make
-	cp -f sdltest /usr/local/bin/sdltest
+	cp -f sdl /usr/local/bin/sdl
 uninstall:
-	rm -f /usr/local/bin/sdltest
+	rm -f /usr/local/bin/sdl
