@@ -32,13 +32,13 @@ static unsigned int square_idata[] = {
 
 static float cube_vdata[] = {
 	-0.5f, -0.5f, -0.5f, 1.0f, 0.0f, 0.0f,
-	 0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 0.0f,
-	 0.5f,  0.5f, -0.5f, 0.0f, 0.0f, 1.0f,
-	-0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 1.0f,
-	-0.5f, -0.5f,  0.5f, 0.0f, 0.0f, 1.0f,
-	 0.5f, -0.5f,  0.5f, 0.0f, 0.0f, 0.0f,
-	 0.5f,  0.5f,  0.5f, 1.0f, 0.0f, 0.0f,
-	-0.5f,  0.5f,  0.5f, 0.0f, 1.0f, 0.0f,
+	 0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 0.0f,
+	 0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 1.0f,
+	-0.5f,  0.5f, -0.5f, 1.0f, 0.0f, 1.0f,
+	-0.5f, -0.5f,  0.5f, 1.0f, 1.0f, 1.0f,
+	 0.5f, -0.5f,  0.5f, 0.0f, 1.0f, 0.0f,
+	 0.5f,  0.5f,  0.5f, 0.0f, 1.0f, 1.0f,
+	-0.5f,  0.5f,  0.5f, 0.0f, 0.0f, 1.0f,
 };
 static unsigned int cube_idata[] = {
 	0, 1, 2, 2, 3, 0, /* Front face */
@@ -71,16 +71,16 @@ handlekeydown(SDL_Event *event) {
 	if (event->key.repeat == 0) {
 		switch (event->key.keysym.sym) {
 			case SDLK_UP:
-				cube_rot.anglex -= 1;
+				cube_rot.anglex -= 5;
 				break;
 			case SDLK_DOWN:
-				cube_rot.anglex += 1;
+				cube_rot.anglex += 5;
 				break;
 			case SDLK_LEFT:
-				cube_rot.angley -= 1;
+				cube_rot.angley -= 5;
 				break;
 			case SDLK_RIGHT:
-				cube_rot.angley += 1;
+				cube_rot.angley += 5;
 				break;
 		}
 	}
@@ -142,11 +142,9 @@ main(int argc, char *argv[]) {
 	for (int i = 0; i < 3; i++) {
 		cblas_saxpy(4, 1.0f, (float [4]){ 1.0f, 1.0f, 1.0f, 1.0f }, 1, transform[i], 5);
 		cblas_saxpy(3, 1.0f, (float [3]){ i * 1.5f - 1.5f, i * 1.5f - 1.5f, 3.0f }, 1, &transform[i][12], 1);
-		print_matrix("transform", transform[i], 4, 4);
 	}
 	cblas_saxpy(4, 1.0f, (float [4]){ 1.0f, 1.0f, 1.0f, 1.0f }, 1, project, 5);
 	project_matrix(project, 90.0f, (float)winsize.width / winsize.height, 0.125f, 2048.125f);
-	print_matrix("projection", project, 4, 4);
 
 	/* Create uniform buffer objects */
 	glGenBuffers(3, ubuf_transform);
@@ -180,6 +178,9 @@ main(int argc, char *argv[]) {
 		/* Update */
 		float pitchmat[16] = { }, yawmat[16] = { }, rotmat[16] = { };
 		for (int i = 0; i < 3; i++) {
+			memset(transform[i], 0, sizeof transform[i]);
+			cblas_saxpy(4, 1.0f, (float [4]){ 1.0f, 1.0f, 1.0f, 1.0f }, 1, transform[i], 5);
+			cblas_saxpy(3, 1.0f, (float [3]){ i * 1.5f - 1.5f, i * 1.5f - 1.5f, 3.0f }, 1, &transform[i][12], 1);
 			rotate_object_transform(transform[i], cube_rot.anglex, 0.0f, 0.0f);
 		}
 		for (int i = 0; i < 3; i++) {
