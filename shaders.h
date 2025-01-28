@@ -4,7 +4,10 @@
 const char *const vertex_glsl = "\
 #version 460\n\
 \n\
-layout(location = 0) in vec4 pos;\n\
+layout(location = 0) in vec3 pos;\n\
+layout(location = 1) in vec3 colour;\n\
+\n\
+layout(location = 1) out vec4 vert_colour;\n\
 \n\
 layout(binding = 0) uniform Transform {\n\
 	mat4 mat_transform;\n\
@@ -16,20 +19,21 @@ layout(binding = 1) uniform Camera {\n\
 \n\
 void\n\
 main() {\n\
-	vec4 npos = mat_viewproj * pos;\n\
-	vec3 tpos = vec3(npos.x / npos.w, npos.y / npos.w, npos.z / npos.w);\n\
-	gl_Position = pos;\n\
+	vert_colour = vec4(colour, 1.0f);\n\
+	gl_Position = mat_viewproj * (mat_transform * vec4(pos, 1.0f));\n\
 }\n\
 ";
 
 const char *const fragment_glsl = "\
-#version 460 core\n\
+#version 460\n\
+\n\
+layout(location = 1) in vec4 colour;\n\
 \n\
 out vec4 fragcolour;\n\
 \n\
 void\n\
 main() {\n\
-	fragcolour = vec4(1.0f, 1.0f, 1.0f, 1.0f);\n\
+	fragcolour = colour;\n\
 }\n\
 ";
 

@@ -1,8 +1,10 @@
-#version 460 core
+#version 460
+
+layout(location = 1) in vec4 colour;
 
 out vec4 fragcolour;
 
 void
 main() {
-	fragcolour = vec4(1.0f, 1.0f, 1.0f, 1.0f);
+	fragcolour = colour;
 }

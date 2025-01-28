@@ -1,4 +1,5 @@
 #include <openblas/cblas.h>
+#include <time.h>
 #include "shaders.h"
 
 #define GL_GLEXT_PROTOTYPES
@@ -15,28 +16,74 @@ static struct winsize {
 static GLuint vshader, fshader, shader_program, vao, vbuf, ibuf;
 
 /* Matrix stuff */
-static float transform[16], rotation[16];
+static float transform[3][16];
 static float view[16], project[16], viewproject[16];
-static GLuint ubuf_transform, ubuf_project;
+static GLuint ubuf_transform[3], ubuf_project;
 
-static float vdata[] = {
-	 0.2f,  0.2f, 2.0f, 1.0f,
-	-0.2f,  0.2f, 2.0f, 1.0f,
-	-0.2f, -0.2f, 2.0f, 1.0f,
-	 0.2f, -0.2f, 2.0f, 1.0f,
+static float square_vdata[] = {
+	 0.5f,  0.5f, 0.0f,
+	-0.5f,  0.5f, 0.0f,
+	-0.5f, -0.5f, 0.0f,
+	 0.5f, -0.5f, 0.0f,
 };
-static float transformed_data[16];
-
-static unsigned int idata[] = {
+static unsigned int square_idata[] = {
 	0, 1, 2, 2, 3, 0
 };
 
+static float cube_vdata[] = {
+	-0.5f, -0.5f, -0.5f, 1.0f, 0.0f, 0.0f,
+	 0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 0.0f,
+	 0.5f,  0.5f, -0.5f, 0.0f, 0.0f, 1.0f,
+	-0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 1.0f,
+	-0.5f, -0.5f,  0.5f, 0.0f, 0.0f, 1.0f,
+	 0.5f, -0.5f,  0.5f, 0.0f, 0.0f, 0.0f,
+	 0.5f,  0.5f,  0.5f, 1.0f, 0.0f, 0.0f,
+	-0.5f,  0.5f,  0.5f, 0.0f, 1.0f, 0.0f,
+};
+static unsigned int cube_idata[] = {
+	0, 1, 2, 2, 3, 0, /* Front face */
+	6, 5, 4, 4, 7, 6, /* Back face */
+	1, 5, 6, 6, 2, 1, /* Right face */
+	4, 0, 3, 3, 7, 4, /* Left face */
+	3, 2, 6, 6, 7, 3, /* Top face */
+	0, 4, 5, 5, 1, 0  /* Bottom face */
+};
+
+/* Game state */
+static struct cube_rot {
+	float anglex, angley;
+} cube_rot;
+
+/* Function definitions */
+static void handlekeydown(SDL_Event *event);
+static void handlemouse(SDL_Event *event);
+
 extern void debug_calcndc(float *m);
-extern void printmatrix(char *s, float *mat, int m, int n);
-extern void projectmat(float *m, float fov, float r, float near, float far);
-extern void xrotation(float *m, float deg);
-extern void yrotation(float *m, float deg);
-extern void zrotation(float *m, float deg);
+extern void print_matrix(char *s, float *mat, int m, int n);
+extern void project_matrix(float *m, float fov, float r, float near, float far);
+extern void rotatex_matrix(float *m, float deg);
+extern void rotatey_matrix(float *m, float deg);
+extern void rotatez_matrix(float *m, float deg);
+
+void
+handlekeydown(SDL_Event *event) {
+	if (event->key.repeat == 0) {
+		switch (event->key.keysym.sym) {
+			case SDLK_UP:
+				cube_rot.anglex -= 5;
+				break;
+			case SDLK_DOWN:
+				cube_rot.anglex += 5;
+				break;
+			case SDLK_LEFT:
+				cube_rot.angley -= 5;
+				break;
+			case SDLK_RIGHT:
+				cube_rot.angley += 5;
+				break;
+		}
+	}
+}
 
 int
 main(int argc, char *argv[]) {
@@ -48,16 +95,8 @@ main(int argc, char *argv[]) {
 	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
 	window = SDL_CreateWindow("doom", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 1920, 1080, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
-	if (window == NULL) {
-		fprintf(stderr, "Fucking no window\n");
-		return 1;
-	}
 	SDL_SetWindowOpacity(window, 0.5f);
 	context = SDL_GL_CreateContext(window);
-	if (context == NULL) {
-		fprintf(stderr, "Fucking no context\n");
-		return 1;
-	}
 
 	/* Initialise glut library */
 	glutInit(&argc, argv);
@@ -65,7 +104,7 @@ main(int argc, char *argv[]) {
 	glViewport(0, 0, winsize.width, winsize.height);
 	glClearColor(0.1f, 0.1f, 0.2f, 1.0f);
 	glCullFace(GL_BACK);
-	glDisable(GL_CULL_FACE);
+	glEnable(GL_CULL_FACE);
 	glEnable(GL_DEPTH_TEST);
 	glDisable(GL_STENCIL_TEST);
 
@@ -90,27 +129,30 @@ main(int argc, char *argv[]) {
 	glGenBuffers(1, &ibuf);
 
 	glBindBuffer(GL_ARRAY_BUFFER, vbuf);
-	glBufferData(GL_ARRAY_BUFFER, sizeof vdata, vdata, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof cube_vdata, cube_vdata, GL_STATIC_DRAW);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibuf);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof idata, idata, GL_STATIC_DRAW);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof cube_idata, cube_idata, GL_STATIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)0);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)12);
 	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
 
-	/* Create transform matrix */
-	cblas_saxpy(4, 1.0f, (float [4]){ 1.0f, 1.0f, 1.0f, 1.0f }, 1, project, 5);
-	projectmat(project, 90.0f, (float)winsize.width / winsize.height, 0.1f, 1000.0f);
-	printmatrix("projection", project, 4, 4);
-	for (int i = 0; i < 4; i++) {
-		cblas_sgemv(CblasColMajor, CblasNoTrans, 4, 4, 1.0f, project, 4, &vdata[4 * i], 1, 0.0f, &transformed_data[4 * i], 1);
+	/* Create matrices */
+	for (int i = 0; i < 3; i++) {
+		cblas_saxpy(4, 1.0f, (float [4]){ 1.0f, 1.0f, 1.0f, 1.0f }, 1, transform[i], 5);
+		cblas_saxpy(3, 1.0f, (float [3]){ i * 1.5f - 1.5f, i * 1.5f - 1.5f, 3.0f }, 1, &transform[i][12], 1);
+		print_matrix("transform", transform[i], 4, 4);
 	}
-	printmatrix("transformed coords", transformed_data, 4, 4);
-	debug_calcndc(transformed_data);
+	cblas_saxpy(4, 1.0f, (float [4]){ 1.0f, 1.0f, 1.0f, 1.0f }, 1, project, 5);
+	project_matrix(project, 90.0f, (float)winsize.width / winsize.height, 0.125f, 2048.125f);
+	print_matrix("projection", project, 4, 4);
 
 	/* Create uniform buffer objects */
-	glGenBuffers(1, &ubuf_transform);
-	glBindBuffer(GL_UNIFORM_BUFFER, ubuf_transform);
-	glBufferData(GL_UNIFORM_BUFFER, sizeof transform, transform, GL_STATIC_DRAW);
-	glBindBufferBase(GL_UNIFORM_BUFFER, 0, ubuf_transform);
+	glGenBuffers(3, ubuf_transform);
+	for (int i = 0; i < 3; i++) {
+		glBindBuffer(GL_UNIFORM_BUFFER, ubuf_transform[i]);
+		glBufferData(GL_UNIFORM_BUFFER, sizeof transform[i], transform[i], GL_STATIC_DRAW);
+	}
 	glGenBuffers(1, &ubuf_project);
 	glBindBuffer(GL_UNIFORM_BUFFER, ubuf_project);
 	glBufferData(GL_UNIFORM_BUFFER, sizeof project, project, GL_STATIC_DRAW);
@@ -118,19 +160,59 @@ main(int argc, char *argv[]) {
 
 	static int run = 1;
 	static SDL_Event event;
+	static struct timespec monotime;
+	clock_gettime(CLOCK_MONOTONIC, &monotime);
 	while (run > 0) {
 		while (SDL_PollEvent(&event)) {
 			switch (event.type) {
+				case SDL_KEYDOWN:
+					handlekeydown(&event);
+					break;
+				case SDL_KEYUP:
+					break;
 				case SDL_QUIT:
 					run = 0;
 					break;
 			}
 		}
+
+		float pitchmat[16] = { }, yawmat[16] = { }, rotmat[16] = { };
+		for (int i = 0; i < 3; i++) {
+			cblas_saxpy(4, 1.0f, (float [4]){ 1.0f, 1.0f, 1.0f, 1.0f }, 1, pitchmat, 5);
+			cblas_saxpy(4, 1.0f, (float [4]){ 1.0f, 1.0f, 1.0f, 1.0f }, 1, yawmat, 5);
+			cblas_saxpy(4, 1.0f, (float [4]){ 1.0f, 1.0f, 1.0f, 1.0f }, 1, rotmat, 5);
+			rotatex_matrix(pitchmat, cube_rot.anglex);
+			rotatey_matrix(yawmat, cube_rot.angley);
+			cblas_sgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, 4, 4, 4, 1.0f, yawmat, 4, pitchmat, 4, 0.0f, rotmat, 4);
+			cblas_saxpy(4, 1.0f, (float [4]){ 1.0f, 1.0f, 1.0f, 1.0f }, 1, transform[i], 5);
+			cblas_saxpy(3, 1.0f, (float [3]){ i * 1.5f - 1.5f, i * 1.5f - 1.5f, 3.0f }, 1, &transform[i][12], 1);
+			cblas_sgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, 4, 4, 4, 1.0f, rotmat, 4, transform[i], 4, 0.0f, pitchmat, 4);
+			for (int j = 0; j < 16; j++) {
+				transform[i][j] = pitchmat[j];
+			}
+		}
+		for (int i = 0; i < 3; i++) {
+			glBindBuffer(GL_UNIFORM_BUFFER, ubuf_transform[i]);
+			glBufferData(GL_UNIFORM_BUFFER, sizeof transform[i], transform[i], GL_STATIC_DRAW);
+		}
+
+		/* Render */
 		SDL_GetWindowSize(window, &winsize.width, &winsize.height);
 		glViewport(0, 0, winsize.width, winsize.height);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void *)0);
+		for (int i = 0; i < 3; i++) {
+			glBindBufferBase(GL_UNIFORM_BUFFER, 0, ubuf_transform[i]);
+			glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, (void *)0);
+		}
 		SDL_GL_SwapWindow(window);
+
+		/* Frame advance */
+		monotime.tv_nsec += 7812500;
+		if (monotime.tv_nsec >= 1000000000) {
+			monotime.tv_nsec -= 1000000000;
+			monotime.tv_sec++;
+		}
+		clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &monotime, NULL);
 	}
 
 	return 0;
