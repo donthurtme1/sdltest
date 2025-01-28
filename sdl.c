@@ -61,6 +61,7 @@ static void handlemouse(SDL_Event *event);
 extern void debug_calcndc(float *m);
 extern void print_matrix(char *s, float *mat, int m, int n);
 extern void project_matrix(float *m, float fov, float r, float near, float far);
+extern void rotate_object_transform(float *mat, float pitch, float yaw, float roll);
 extern void rotatex_matrix(float *m, float deg);
 extern void rotatey_matrix(float *m, float deg);
 extern void rotatez_matrix(float *m, float deg);
@@ -70,16 +71,16 @@ handlekeydown(SDL_Event *event) {
 	if (event->key.repeat == 0) {
 		switch (event->key.keysym.sym) {
 			case SDLK_UP:
-				cube_rot.anglex -= 5;
+				cube_rot.anglex -= 1;
 				break;
 			case SDLK_DOWN:
-				cube_rot.anglex += 5;
+				cube_rot.anglex += 1;
 				break;
 			case SDLK_LEFT:
-				cube_rot.angley -= 5;
+				cube_rot.angley -= 1;
 				break;
 			case SDLK_RIGHT:
-				cube_rot.angley += 5;
+				cube_rot.angley += 1;
 				break;
 		}
 	}
@@ -176,20 +177,10 @@ main(int argc, char *argv[]) {
 			}
 		}
 
+		/* Update */
 		float pitchmat[16] = { }, yawmat[16] = { }, rotmat[16] = { };
 		for (int i = 0; i < 3; i++) {
-			cblas_saxpy(4, 1.0f, (float [4]){ 1.0f, 1.0f, 1.0f, 1.0f }, 1, pitchmat, 5);
-			cblas_saxpy(4, 1.0f, (float [4]){ 1.0f, 1.0f, 1.0f, 1.0f }, 1, yawmat, 5);
-			cblas_saxpy(4, 1.0f, (float [4]){ 1.0f, 1.0f, 1.0f, 1.0f }, 1, rotmat, 5);
-			rotatex_matrix(pitchmat, cube_rot.anglex);
-			rotatey_matrix(yawmat, cube_rot.angley);
-			cblas_sgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, 4, 4, 4, 1.0f, yawmat, 4, pitchmat, 4, 0.0f, rotmat, 4);
-			cblas_saxpy(4, 1.0f, (float [4]){ 1.0f, 1.0f, 1.0f, 1.0f }, 1, transform[i], 5);
-			cblas_saxpy(3, 1.0f, (float [3]){ i * 1.5f - 1.5f, i * 1.5f - 1.5f, 3.0f }, 1, &transform[i][12], 1);
-			cblas_sgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, 4, 4, 4, 1.0f, rotmat, 4, transform[i], 4, 0.0f, pitchmat, 4);
-			for (int j = 0; j < 16; j++) {
-				transform[i][j] = pitchmat[j];
-			}
+			rotate_object_transform(transform[i], cube_rot.anglex, 0.0f, 0.0f);
 		}
 		for (int i = 0; i < 3; i++) {
 			glBindBuffer(GL_UNIFORM_BUFFER, ubuf_transform[i]);

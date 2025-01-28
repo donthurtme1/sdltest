@@ -1,3 +1,4 @@
+#include <openblas/cblas.h>
 #include <math.h>
 #include <stdio.h>
 
@@ -5,6 +6,10 @@
 
 void debug_calcndc(float *m);
 void print_matrix(char *s, float *mat, int m, int n);
+void rotate_object_transform(float *mat, float pitch, float yaw, float roll);
+void rotatex_matrix(float *mat, float deg);
+void rotatey_matrix(float *mat, float deg);
+void rotatez_matrix(float *mat, float deg);
 
 void
 debug_calcndc(float *m) {
@@ -45,6 +50,17 @@ project_matrix(float *m, float fov, float r, float near, float far) {
 
 	/* Set the rest to 0 */
 	m[1] = m[2] = m[3] = m[4] = m[6] = m[7] = m[8] = m[9] = m[12] = m[13] = m[15] = 0.0f;
+}
+
+void
+rotate_object_transform(float *mat, float pitch, float yaw, float roll) {
+	float rotate[16] = { }, output_matrix[16];
+	cblas_saxpy(4, 1.0f, (float [4]){ 1.0f, 1.0f, 1.0f, 1.0f }, 1, rotate, 5);
+	rotatex_matrix(rotate, pitch);
+	cblas_sgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, 4, 4, 4, 1.0f, mat, 4, rotate, 4, 0.0f, output_matrix, 4);
+	for (int i = 0; i < 16; i++) {
+		mat[i] = output_matrix[i];
+	}
 }
 
 void
