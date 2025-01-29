@@ -51,11 +51,16 @@ static unsigned int cube_idata[] = {
 
 /* Game state */
 static struct cube_rot {
-	float anglex, angley;
+	float pitch_delta, yaw_delta;
 } cube_rot;
+static struct camera {
+	float xpos, ypos, zpos;
+	float xy_rotor, yz_rotor, zx_rotor;
+} camera;
 
 /* Function definitions */
 static void handlekeydown(SDL_Event *event);
+static void handlekeyup(SDL_Event *event);
 static void handlemouse(SDL_Event *event);
 
 extern void debug_calcndc(float *m);
@@ -71,19 +76,44 @@ handlekeydown(SDL_Event *event) {
 	if (event->key.repeat == 0) {
 		switch (event->key.keysym.sym) {
 			case SDLK_UP:
-				cube_rot.anglex -= 5;
+				cube_rot.pitch_delta -= 2;
 				break;
 			case SDLK_DOWN:
-				cube_rot.anglex += 5;
+				cube_rot.pitch_delta += 2;
 				break;
 			case SDLK_LEFT:
-				cube_rot.angley -= 5;
+				cube_rot.yaw_delta += 2;
 				break;
 			case SDLK_RIGHT:
-				cube_rot.angley += 5;
+				cube_rot.yaw_delta -= 2;
 				break;
 		}
 	}
+}
+
+void
+handlekeyup(SDL_Event *event) {
+	if (event->key.repeat == 0) {
+		switch (event->key.keysym.sym) {
+			case SDLK_UP:
+				cube_rot.pitch_delta += 2;
+				break;
+			case SDLK_DOWN:
+				cube_rot.pitch_delta -= 2;
+				break;
+			case SDLK_LEFT:
+				cube_rot.yaw_delta -= 2;
+				break;
+			case SDLK_RIGHT:
+				cube_rot.yaw_delta += 2;
+				break;
+		}
+	}
+}
+
+void
+handlemouse(SDL_Event *event) {
+	camera.xy_rotor += 0.01f * event->motion.xrel;
 }
 
 int
@@ -168,6 +198,10 @@ main(int argc, char *argv[]) {
 					handlekeydown(&event);
 					break;
 				case SDL_KEYUP:
+					handlekeyup(&event);
+					break;
+				case SDL_MOUSEMOTION:
+					handlemouse(&event);
 					break;
 				case SDL_QUIT:
 					run = 0;
@@ -178,10 +212,7 @@ main(int argc, char *argv[]) {
 		/* Update */
 		float pitchmat[16] = { }, yawmat[16] = { }, rotmat[16] = { };
 		for (int i = 0; i < 3; i++) {
-			memset(transform[i], 0, sizeof transform[i]);
-			cblas_saxpy(4, 1.0f, (float [4]){ 1.0f, 1.0f, 1.0f, 1.0f }, 1, transform[i], 5);
-			cblas_saxpy(3, 1.0f, (float [3]){ i * 1.5f - 1.5f, i * 1.5f - 1.5f, 3.0f }, 1, &transform[i][12], 1);
-			rotate_object_transform(transform[i], cube_rot.anglex, 0.0f, 0.0f);
+			rotate_object_transform(transform[i], cube_rot.pitch_delta, cube_rot.yaw_delta, 0.0f);
 		}
 		for (int i = 0; i < 3; i++) {
 			glBindBuffer(GL_UNIFORM_BUFFER, ubuf_transform[i]);
