@@ -54,13 +54,13 @@ project_matrix(float *m, float fov, float r, float near, float far) {
 
 void
 rotate_object_transform(float *mat, float pitch, float yaw, float roll) {
-	float rotatex[16] = { }, rotatey[16] = { }, output_matrix[16];
+	float rotatex[16] = { }, rotatey[16] = { }, output_matrix[16] = { };
 	cblas_saxpy(4, 1.0f, (float [4]){ 1.0f, 1.0f, 1.0f, 1.0f }, 1, rotatex, 5);
 	cblas_saxpy(4, 1.0f, (float [4]){ 1.0f, 1.0f, 1.0f, 1.0f }, 1, rotatey, 5);
 	rotatex_matrix(rotatex, pitch);
 	rotatey_matrix(rotatey, yaw);
-	cblas_sgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, 4, 4, 4, 1.0f, mat, 4, rotatey, 4, 0.0f, output_matrix, 4);
-	cblas_sgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, 4, 4, 4, 1.0f, output_matrix, 4, rotatex, 4, 0.0f, mat, 4);
+	cblas_sgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, 4, 4, 4, 1.0f, rotatey, 4, mat, 4, 0.0f, output_matrix, 4);
+	cblas_sgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, 4, 4, 4, 1.0f, rotatex, 4, output_matrix, 4, 0.0f, mat, 4);
 }
 
 void

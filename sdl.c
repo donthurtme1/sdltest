@@ -1,5 +1,6 @@
 #include <openblas/cblas.h>
 #include <time.h>
+#include <string.h>
 #include "shaders.h"
 
 #define GL_GLEXT_PROTOTYPES
@@ -7,6 +8,8 @@
 #include <GL/glu.h>
 #include <GL/glut.h>
 #include <SDL2/SDL.h>
+
+#define IDENTITY_MATRIX { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 }
 
 static SDL_Window *window;
 static SDL_GLContext *context;
@@ -50,8 +53,10 @@ static unsigned int cube_idata[] = {
 };
 
 /* Game state */
+static int fps = 128;
 static struct cube_rot {
-	float pitch_delta, yaw_delta;
+	float yz_rotor, zx_rotor;
+	float yz_rotor_delta, zx_rotor_delta;
 } cube_rot;
 static struct camera {
 	float xpos, ypos, zpos;
@@ -76,16 +81,16 @@ handlekeydown(SDL_Event *event) {
 	if (event->key.repeat == 0) {
 		switch (event->key.keysym.sym) {
 			case SDLK_UP:
-				cube_rot.pitch_delta -= 2;
+				cube_rot.yz_rotor_delta -= 2;
 				break;
 			case SDLK_DOWN:
-				cube_rot.pitch_delta += 2;
+				cube_rot.yz_rotor_delta += 2;
 				break;
 			case SDLK_LEFT:
-				cube_rot.yaw_delta += 2;
+				cube_rot.zx_rotor_delta += 2;
 				break;
 			case SDLK_RIGHT:
-				cube_rot.yaw_delta -= 2;
+				cube_rot.zx_rotor_delta -= 2;
 				break;
 		}
 	}
@@ -96,16 +101,16 @@ handlekeyup(SDL_Event *event) {
 	if (event->key.repeat == 0) {
 		switch (event->key.keysym.sym) {
 			case SDLK_UP:
-				cube_rot.pitch_delta += 2;
+				cube_rot.yz_rotor_delta += 2;
 				break;
 			case SDLK_DOWN:
-				cube_rot.pitch_delta -= 2;
+				cube_rot.yz_rotor_delta -= 2;
 				break;
 			case SDLK_LEFT:
-				cube_rot.yaw_delta -= 2;
+				cube_rot.zx_rotor_delta -= 2;
 				break;
 			case SDLK_RIGHT:
-				cube_rot.yaw_delta += 2;
+				cube_rot.zx_rotor_delta += 2;
 				break;
 		}
 	}
@@ -171,7 +176,7 @@ main(int argc, char *argv[]) {
 	/* Create matrices */
 	for (int i = 0; i < 3; i++) {
 		cblas_saxpy(4, 1.0f, (float [4]){ 1.0f, 1.0f, 1.0f, 1.0f }, 1, transform[i], 5);
-		cblas_saxpy(3, 1.0f, (float [3]){ i * 1.5f - 1.5f, i * 1.5f - 1.5f, 3.0f }, 1, &transform[i][12], 1);
+		cblas_saxpy(3, 1.0f, (float [3]){ (i - 1) * 1.5f, (i - 1) * 1.5f, 3.0f }, 1, &transform[i][12], 1);
 	}
 	cblas_saxpy(4, 1.0f, (float [4]){ 1.0f, 1.0f, 1.0f, 1.0f }, 1, project, 5);
 	project_matrix(project, 90.0f, (float)winsize.width / winsize.height, 0.125f, 2048.125f);
@@ -210,11 +215,15 @@ main(int argc, char *argv[]) {
 		}
 
 		/* Update */
-		float pitchmat[16] = { }, yawmat[16] = { }, rotmat[16] = { };
+		static float rotate[16] = IDENTITY_MATRIX;
+		float pitchmat[16] = { }, yawmat[16] = { };
+		cube_rot.yz_rotor += cube_rot.yz_rotor_delta;
+		cube_rot.zx_rotor += cube_rot.zx_rotor_delta;
 		for (int i = 0; i < 3; i++) {
-			rotate_object_transform(transform[i], cube_rot.pitch_delta, cube_rot.yaw_delta, 0.0f);
-		}
-		for (int i = 0; i < 3; i++) {
+			memset(transform, 0, sizeof transform);
+			cblas_saxpy(4, 1.0f, (float [4]){ 1.0f, 1.0f, 1.0f, 1.0f }, 1, transform[i], 5);
+			rotate_object_transform(transform[i], cube_rot.yz_rotor, cube_rot.zx_rotor, 0.0f);
+			cblas_saxpy(3, 1.0f, (float [3]){ (i - 1) * 1.5f, (i - 1) * 1.5f, 3.0f }, 1, &transform[i][12], 1);
 			glBindBuffer(GL_UNIFORM_BUFFER, ubuf_transform[i]);
 			glBufferData(GL_UNIFORM_BUFFER, sizeof transform[i], transform[i], GL_STATIC_DRAW);
 		}
@@ -230,7 +239,7 @@ main(int argc, char *argv[]) {
 		SDL_GL_SwapWindow(window);
 
 		/* Frame advance */
-		monotime.tv_nsec += 7812500;
+		monotime.tv_nsec += (1000000000 / fps);
 		if (monotime.tv_nsec >= 1000000000) {
 			monotime.tv_nsec -= 1000000000;
 			monotime.tv_sec++;
