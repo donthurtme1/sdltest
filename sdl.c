@@ -55,7 +55,9 @@ static unsigned int cube_idata[] = {
 /* Game state */
 static int fps = 128;
 static struct cube_rot {
-	float yz_rotor, zx_rotor;
+	float rotor[4]; // [0] = scalar, [1] [2] [3] = bivectors
+	float rotor_delta[4];
+	float xy_bivec, yz_bivec, zx_bivec;
 	float yz_rotor_delta, zx_rotor_delta;
 } cube_rot;
 static struct camera {
@@ -68,6 +70,7 @@ static void handlekeydown(SDL_Event *event);
 static void handlekeyup(SDL_Event *event);
 static void handlemouse(SDL_Event *event);
 
+/* Matrix */
 extern void debug_calcndc(float *m);
 extern void print_matrix(char *s, float *mat, int m, int n);
 extern void project_matrix(float *m, float fov, float r, float near, float far);
@@ -76,21 +79,31 @@ extern void rotatex_matrix(float *m, float deg);
 extern void rotatey_matrix(float *m, float deg);
 extern void rotatez_matrix(float *m, float deg);
 
+/* Rotor */
+extern void geometric_product(float (*rotor)[4], float a[3], float b[3]);
+extern void apply_rotor(float rotor[4], float (*vec)[3]);
+extern void combine_rotor(float S[4], float T[4], float (*result)[4]);
+extern void rotor_to_matrix(float (*mat)[16], float rotor[4]);
+
 void
 handlekeydown(SDL_Event *event) {
 	if (event->key.repeat == 0) {
 		switch (event->key.keysym.sym) {
 			case SDLK_UP:
-				cube_rot.yz_rotor_delta -= 2;
+				cube_rot.rotor_delta[2] -= 19 / 181.0f;
+				cube_rot.rotor_delta[0] -= 1.0f / 181.0f;
 				break;
 			case SDLK_DOWN:
-				cube_rot.yz_rotor_delta += 2;
+				cube_rot.rotor_delta[2] += 19 / 181.0f;
+				cube_rot.rotor_delta[0] -= 1.0f / 181.0f;
 				break;
 			case SDLK_LEFT:
-				cube_rot.zx_rotor_delta += 2;
+				cube_rot.rotor_delta[3] -= 19 / 181.0f;
+				cube_rot.rotor_delta[0] -= 1.0f / 181.0f;
 				break;
 			case SDLK_RIGHT:
-				cube_rot.zx_rotor_delta -= 2;
+				cube_rot.rotor_delta[3] += 19 / 181.0f;
+				cube_rot.rotor_delta[0] -= 1.0f / 181.0f;
 				break;
 		}
 	}
@@ -101,16 +114,20 @@ handlekeyup(SDL_Event *event) {
 	if (event->key.repeat == 0) {
 		switch (event->key.keysym.sym) {
 			case SDLK_UP:
-				cube_rot.yz_rotor_delta += 2;
+				cube_rot.rotor_delta[2] += 19 / 181.0f;
+				cube_rot.rotor_delta[0] += 1.0f / 181.0f;
 				break;
 			case SDLK_DOWN:
-				cube_rot.yz_rotor_delta -= 2;
+				cube_rot.rotor_delta[2] -= 19 / 181.0f;
+				cube_rot.rotor_delta[0] += 1.0f / 181.0f;
 				break;
 			case SDLK_LEFT:
-				cube_rot.zx_rotor_delta -= 2;
+				cube_rot.rotor_delta[3] += 19 / 181.0f;
+				cube_rot.rotor_delta[0] += 1.0f / 181.0f;
 				break;
 			case SDLK_RIGHT:
-				cube_rot.zx_rotor_delta += 2;
+				cube_rot.rotor_delta[3] -= 19 / 181.0f;
+				cube_rot.rotor_delta[0] += 1.0f / 181.0f;
 				break;
 		}
 	}
@@ -192,6 +209,9 @@ main(int argc, char *argv[]) {
 	glBufferData(GL_UNIFORM_BUFFER, sizeof project, project, GL_STATIC_DRAW);
 	glBindBufferBase(GL_UNIFORM_BUFFER, 1, ubuf_project);
 
+	/* Initialise rotors */
+	cube_rot.rotor[0] = cube_rot.rotor_delta[0] = 1.0f;
+
 	static int run = 1;
 	static SDL_Event event;
 	static struct timespec monotime;
@@ -217,12 +237,19 @@ main(int argc, char *argv[]) {
 		/* Update */
 		static float rotate[16] = IDENTITY_MATRIX;
 		float pitchmat[16] = { }, yawmat[16] = { };
-		cube_rot.yz_rotor += cube_rot.yz_rotor_delta;
-		cube_rot.zx_rotor += cube_rot.zx_rotor_delta;
+		cube_rot.yz_bivec += cube_rot.yz_rotor_delta;
+		cube_rot.zx_bivec += cube_rot.zx_rotor_delta;
+		combine_rotor(cube_rot.rotor_delta, cube_rot.rotor, &cube_rot.rotor);
 		for (int i = 0; i < 3; i++) {
+			/* Rotor test */
+			float test_rotor_matrix[16] = IDENTITY_MATRIX;
+			//geometric_product(&cube_rot.rotor, (float [3]){ 0, 0, 1 }, (float [3]){ 0, 1, 1 });
+			rotor_to_matrix(&test_rotor_matrix, cube_rot.rotor);
+
 			memset(transform, 0, sizeof transform);
 			cblas_saxpy(4, 1.0f, (float [4]){ 1.0f, 1.0f, 1.0f, 1.0f }, 1, transform[i], 5);
-			rotate_object_transform(transform[i], cube_rot.yz_rotor, cube_rot.zx_rotor, 0.0f);
+			//rotate_object_transform(transform[i], cube_rot.yz_bivec, cube_rot.zx_bivec, 0.0f);
+			cblas_scopy(16, test_rotor_matrix, 1, transform[i], 1);
 			cblas_saxpy(3, 1.0f, (float [3]){ (i - 1) * 1.5f, (i - 1) * 1.5f, 3.0f }, 1, &transform[i][12], 1);
 			glBindBuffer(GL_UNIFORM_BUFFER, ubuf_transform[i]);
 			glBufferData(GL_UNIFORM_BUFFER, sizeof transform[i], transform[i], GL_STATIC_DRAW);
