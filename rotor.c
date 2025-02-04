@@ -2,10 +2,33 @@
 #include <math.h>
 #include <string.h>
 
-inline void
-normalise_vec3(float vec[3]) {
-	register float magnitude = cblas_sdot(3, vec, 1, vec, 1);
-	magnitude = sqrtf(magnitude);
+/* Normalises by changing the scalar part */
+void
+normalise_rotor_scalar(float (*rotor)[4]) {
+	register float dot = ((*rotor)[1]*(*rotor)[1]) + ((*rotor)[2]*(*rotor)[2]) + ((*rotor)[3]*(*rotor)[3]);
+	(*rotor)[0] = sqrtf(1 - dot);
+	printf("geo prod:\nscalar(0): %f, bivec(1-3): %f, %f, %f\n\n", (*rotor)[0], (*rotor)[1], (*rotor)[2], (*rotor)[3]);
+}
+
+void
+normalise_rotor(float (*rotor)[4]) {
+	float r = ((*rotor)[1] * (*rotor)[1]) + ((*rotor)[2] * (*rotor)[2]) + ((*rotor)[3] * (*rotor)[3]);
+	float s = sqrtf(r);
+	printf("input:     %f, %f, %f, %f\n", (*rotor)[0], (*rotor)[1], (*rotor)[2], (*rotor)[3]);
+	if (s == 0) {
+		printf("%f %f\nexiting\n\n", r, s);
+		r = ((*rotor)[1]*(*rotor)[1]) + ((*rotor)[2]*(*rotor)[2]) + ((*rotor)[3]*(*rotor)[3]);
+		(*rotor)[0] = 1;
+		return;
+	}
+
+	printf("%f %f\n", r, s);
+	(*rotor)[1] *= 0.05f / s;
+	(*rotor)[2] *= 0.05f / s;
+	(*rotor)[3] *= 0.05f / s;
+	r = ((*rotor)[1]*(*rotor)[1]) + ((*rotor)[2]*(*rotor)[2]) + ((*rotor)[3]*(*rotor)[3]);
+	(*rotor)[0] = sqrtf(1 - r);
+	printf("geo prod:  %f, %f, %f, %f\n\n", (*rotor)[0], (*rotor)[1], (*rotor)[2], (*rotor)[3]);
 }
 
 void
@@ -30,9 +53,9 @@ apply_rotor(float rotor[4], float (*vec)[3]) {
     float S_z = rotor[0]*(*vec)[2] - rotor[2]*(*vec)[1] + rotor[3]*(*vec)[0];
     float S_xyz = rotor[1]*(*vec)[2] + rotor[2]*(*vec)[0] + rotor[3]*(*vec)[1];
 
-    (*vec)[0] = S_x*rotor[0] +   S_y*rotor[1] + S_xyz*rotor[2] -   S_z*rotor[3];
-    (*vec)[1] = S_y*rotor[0] -   S_x*rotor[1] +   S_z*rotor[2] + S_xyz*rotor[3];
-    (*vec)[2] = S_z*rotor[0] + S_xyz*rotor[1] -   S_y*rotor[2] +   S_x*rotor[3];
+    (*vec)[0] = S_x*rotor[0] + S_y*rotor[1] + S_xyz*rotor[2] - S_z*rotor[3];
+    (*vec)[1] = S_y*rotor[0] - S_x*rotor[1] + S_z*rotor[2] + S_xyz*rotor[3];
+    (*vec)[2] = S_z*rotor[0] + S_xyz*rotor[1] - S_y*rotor[2] + S_x*rotor[3];
 }
 
 void
