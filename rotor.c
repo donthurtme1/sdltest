@@ -4,13 +4,13 @@
 
 /* Normalises by changing the scalar part */
 void
-normalise_rotor_scalar(float rotor[4]) {
+normalise_rotor_scalar(float rotor[4], float mag) {
 	register float dot = (rotor[1]*rotor[1]) + (rotor[2]*rotor[2]) + (rotor[3]*rotor[3]);
-	rotor[0] = sqrtf(1 - dot);
+	rotor[0] = sqrtf((mag * mag) - dot);
 }
 
 void
-normalise_rotor(float rotor[4], float len) {
+normalise_rotor_bivec(float rotor[4], float len) {
 	float r = (rotor[1] * rotor[1]) + (rotor[2] * rotor[2]) + (rotor[3] * rotor[3]);
 	float s = sqrtf(r);
 	//printf("input:     %f, %f, %f, %f\n", rotor[0], rotor[1], rotor[2], rotor[3]);
@@ -26,6 +26,15 @@ normalise_rotor(float rotor[4], float len) {
 	r = (rotor[1]*rotor[1]) + (rotor[2]*rotor[2]) + (rotor[3]*rotor[3]);
 	rotor[0] = sqrtf(1 - r);
 	//printf("geo prod:  %f, %f, %f, %f\n\n", rotor[0], rotor[1], rotor[2], rotor[3]);
+}
+
+void
+normalise_rotor(float rotor[4], float len) {
+	register float r = sqrtf((rotor[0]*rotor[0]) + (rotor[1]*rotor[1]) + (rotor[2]*rotor[2]) + (rotor[3]*rotor[3]));
+	rotor[0] *= len / r;
+	rotor[1] *= len / r;
+	rotor[2] *= len / r;
+	rotor[3] *= len / r;
 }
 
 void

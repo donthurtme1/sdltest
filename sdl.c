@@ -11,6 +11,14 @@
 
 #define IDENTITY_MATRIX { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 }
 
+/* Stores other player's data */
+struct Player {
+	float pos[3], vel[3], accel[3], jerk[3];
+	float rotor[4], rotor_delta[4];
+	short rtr_2df[4], rtr_3df[4]; // Used for prediction to mitigate lag
+};
+
+/* SDL stuff */
 static SDL_Window *window;
 static SDL_GLContext *context;
 static struct winsize {
@@ -44,28 +52,35 @@ static float cube_vdata[] = {
 	-0.5f,  0.5f,  0.5f, 0.0f, 0.0f, 1.0f,
 };
 static unsigned int cube_idata[] = {
-	0, 1, 2, 2, 3, 0, /* Front face */
-	6, 5, 4, 4, 7, 6, /* Back face */
-	1, 5, 6, 6, 2, 1, /* Right face */
-	4, 0, 3, 3, 7, 4, /* Left face */
-	3, 2, 6, 6, 7, 3, /* Top face */
-	0, 4, 5, 5, 1, 0  /* Bottom face */
+	0, 1, 2, 2, 3, 0, // Front face 
+	6, 5, 4, 4, 7, 6, // Back face
+	1, 5, 6, 6, 2, 1, // Right face
+	4, 0, 3, 3, 7, 4, // Left face
+	3, 2, 6, 6, 7, 3, // Top face
+	0, 4, 5, 5, 1, 0  // Bottom face
 };
 
-/* Game state */
-static int fps = 128;
-static struct cube_rot {
+/* Global state */
+int fps = 128;
+int run = 1;
+
+struct Cube {
 	float rotor[4], rotor_delta[4];
-} cube_rot;
-static struct camera {
-	float xpos, ypos, zpos;
-	float rotor[4], rotor_delta[4];
+} cube;
+struct Camera {
+	float pos[3], pos_df[3];
+	float rotor[4], rotor_df[4];
 } camera;
 
 /* Function definitions */
-static void handlekeydown(SDL_Event *event);
-static void handlekeyup(SDL_Event *event);
-static void handlemouse(SDL_Event *event);
+static void PollEvents(SDL_Event *event);
+static void Framestep(void);
+
+/* Input */
+extern void handle_events(void);
+extern void handle_keydown(SDL_Event *event);
+extern void handle_keyup(SDL_Event *event);
+extern void handle_mouse(SDL_Event *event);
 
 /* Matrix */
 extern void debug_calcndc(float *m);
@@ -77,7 +92,8 @@ extern void rotatey_matrix(float *m, float deg);
 extern void rotatez_matrix(float *m, float deg);
 
 /* Rotor */
-extern void normalise_rotor_scalar(float rotor[4]);
+extern void normalise_rotor_scalar(float rotor[4], float mag);
+extern void normalise_rotor_bivec(float rotor[4], float mag);
 extern void normalise_rotor(float rotor[4], float mag);
 extern void geometric_product(float rotor[4], float a[3], float b[3]);
 extern void apply_rotor(float rotor[4], float (*vec)[3]);
@@ -85,83 +101,41 @@ extern void combine_rotor(float S[4], float T[4], float result[4]);
 extern void rotor_to_matrix(float mat[16], float rotor[4]);
 
 void
-handlekeydown(SDL_Event *event) {
-	float rotor[4] = { };
-	if (event->key.repeat == 0) {
-		switch (event->key.keysym.sym) {
-			case SDLK_q:
-				rotor[0] = 1.0f;
-				rotor[1] += 1.0f;
-				normalise_rotor(rotor, 0.02f);
-				combine_rotor(rotor, camera.rotor_delta, camera.rotor_delta);
-				break;
-			case SDLK_e:
-				rotor[0] = 1.0f;
-				rotor[1] -= 1.0f;
-				normalise_rotor(rotor, 0.02f);
-				combine_rotor(rotor, camera.rotor_delta, camera.rotor_delta);
-				break;
-			case SDLK_UP:
-				cube_rot.rotor_delta[2] -= 1.0f;
-				normalise_rotor(cube_rot.rotor_delta, 0.05f);
-				break;
-			case SDLK_DOWN:
-				cube_rot.rotor_delta[2] += 1.0f;
-				normalise_rotor(cube_rot.rotor_delta, 0.05f);
-				break;
-			case SDLK_LEFT:
-				cube_rot.rotor_delta[3] -= 1.0f;
-				normalise_rotor(cube_rot.rotor_delta, 0.05f);
-				break;
-			case SDLK_RIGHT:
-				cube_rot.rotor_delta[3] += 1.0f;
-				normalise_rotor(cube_rot.rotor_delta, 0.05f);
-				break;
-		}
+PollEvents(SDL_Event *event) {
+	switch (event->type) {
+		case SDL_KEYDOWN:
+			handle_keydown(event);
+			break;
+		case SDL_KEYUP:
+			handle_keyup(event);
+			break;
+		case SDL_MOUSEMOTION:
+			handle_mouse(event);
+			break;
+		case SDL_QUIT:
+			run = 0;
+			break;
 	}
 }
 
 void
-handlekeyup(SDL_Event *event) {
-	static float rotor[4];
-	if (event->key.repeat == 0) {
-		switch (event->key.keysym.sym) {
-			case SDLK_q:
-				camera.rotor_delta[1] = 0.0f;
-				normalise_rotor(camera.rotor_delta, 0.02f);
-				break;
-			case SDLK_e:
-				camera.rotor_delta[1] = 0.0f;
-				normalise_rotor(camera.rotor_delta, 0.02f);
-				break;
-			case SDLK_UP:
-				cube_rot.rotor_delta[2] = 0.0f;
-				normalise_rotor(cube_rot.rotor_delta, 0.05f);
-				break;
-			case SDLK_DOWN:
-				cube_rot.rotor_delta[2] = 0.0f;
-				normalise_rotor(cube_rot.rotor_delta, 0.05f);
-				break;
-			case SDLK_LEFT:
-				cube_rot.rotor_delta[3] = 0.0f;
-				normalise_rotor(cube_rot.rotor_delta, 0.05f);
-				break;
-			case SDLK_RIGHT:
-				cube_rot.rotor_delta[3] = 0.0f;
-				normalise_rotor(cube_rot.rotor_delta, 0.05f);
-				break;
-		}
+Framestep(void) {
+	combine_rotor(cube.rotor_delta, cube.rotor, cube.rotor);
+	combine_rotor(camera.rotor_df, camera.rotor, camera.rotor);
+	for (int i = 0; i < 3; i++) {
+		rotor_to_matrix(transform[i], cube.rotor);
+		cblas_saxpy(3, 1.0f, (float [3]){ (i - 1) * 1.5f, (i - 1) * 1.5f, 3.0f }, 1, &transform[i][12], 1);
+		glBindBuffer(GL_UNIFORM_BUFFER, ubuf_transform[i]);
+		glBufferData(GL_UNIFORM_BUFFER, sizeof transform[i], transform[i], GL_STATIC_DRAW);
 	}
-}
 
-void
-handlemouse(SDL_Event *event) {
-	float rotor[4] = { };
-	rotor[0] = 1.0f;
-	rotor[2] += 0.01f * event->motion.yrel;
-	rotor[3] += 0.01f * event->motion.xrel;
-	normalise_rotor(rotor, 0.002f);
-	combine_rotor(rotor, camera.rotor, camera.rotor);
+	float camrotation[16], camtransform[16] = IDENTITY_MATRIX;
+	rotor_to_matrix(camrotation, camera.rotor);
+	cblas_saxpy(3, -1.0f, camera.pos, 1, &camtransform[12], 1);
+	cblas_sgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, 4, 4, 4, 1.0f, camrotation, 4, camtransform, 4, 0.0f, view, 4);
+	cblas_sgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, 4, 4, 4, 1.0f, project, 4, view, 4, 0.0f, viewproject, 4);
+	glBindBuffer(GL_UNIFORM_BUFFER, ubuf_viewproject);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof viewproject, viewproject, GL_STATIC_DRAW);
 }
 
 int
@@ -223,7 +197,7 @@ main(int argc, char *argv[]) {
 		cblas_saxpy(3, 1.0f, (float [3]){ (i - 1) * 1.5f, (i - 1) * 1.5f, 3.0f }, 1, &transform[i][12], 1);
 	}
 	cblas_saxpy(4, 1.0f, (float [4]){ 1.0f, 1.0f, 1.0f, 1.0f }, 1, project, 5);
-	project_matrix(project, 90.0f, (float)winsize.width / winsize.height, 0.125f, 2048.125f);
+	project_matrix(project, 90.0f, (float)winsize.width / winsize.height, 0.015625f, 2048.015625f);
 
 	/* Create uniform buffer objects */
 	glGenBuffers(3, ubuf_transform);
@@ -237,48 +211,19 @@ main(int argc, char *argv[]) {
 	glBindBufferBase(GL_UNIFORM_BUFFER, 1, ubuf_viewproject);
 
 	/* Initialise rotors */
-	cube_rot.rotor[0] = cube_rot.rotor_delta[0] = 1.0f;
-	camera.rotor[0] = camera.rotor_delta[0] = 1.0f;
+	cube.rotor[0] = cube.rotor_delta[0] = 1.0f;
+	camera.rotor[0] = camera.rotor_df[0] = 1.0f;
 
-	static int run = 1;
 	static SDL_Event event;
 	static struct timespec monotime;
 	clock_gettime(CLOCK_MONOTONIC, &monotime);
 	while (run > 0) {
 		while (SDL_PollEvent(&event)) {
-			switch (event.type) {
-				case SDL_KEYDOWN:
-					handlekeydown(&event);
-					break;
-				case SDL_KEYUP:
-					handlekeyup(&event);
-					break;
-				case SDL_MOUSEMOTION:
-					handlemouse(&event);
-					break;
-				case SDL_QUIT:
-					run = 0;
-					break;
-			}
+			PollEvents(&event);
 		}
 
 		/* Update */
-		combine_rotor(cube_rot.rotor_delta, cube_rot.rotor, cube_rot.rotor);
-		combine_rotor(camera.rotor_delta, camera.rotor, camera.rotor);
-		for (int i = 0; i < 3; i++) {
-			rotor_to_matrix(transform[i], cube_rot.rotor);
-			cblas_saxpy(3, 1.0f, (float [3]){ (i - 1) * 1.5f, (i - 1) * 1.5f, 3.0f }, 1, &transform[i][12], 1);
-			glBindBuffer(GL_UNIFORM_BUFFER, ubuf_transform[i]);
-			glBufferData(GL_UNIFORM_BUFFER, sizeof transform[i], transform[i], GL_STATIC_DRAW);
-		}
-
-		rotor_to_matrix(view, camera.rotor);
-		cblas_sgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, 4, 4, 4, 1.0f, project, 4, view, 4, 0.0f, viewproject, 4);
-		glBindBuffer(GL_UNIFORM_BUFFER, ubuf_viewproject);
-		glBufferData(GL_UNIFORM_BUFFER, sizeof viewproject, viewproject, GL_STATIC_DRAW);
-
-		if (isnanf(view[0]))
-			return 0;
+		Framestep();
 
 		/* Render */
 		SDL_GetWindowSize(window, &winsize.width, &winsize.height);
