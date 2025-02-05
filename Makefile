@@ -1,6 +1,6 @@
 make:
-	sth -o shaders.h vertex.glsl fragment.glsl
-	gcc -o sdl -g sdl.c matrix.c rotor.c input.c -lSDL2 -lGL -lglut -lopenblas -lm
+	sth -o include/shaders.h vertex.glsl fragment.glsl
+	gcc -o sdl -g src/sdl.c src/matrix.c src/rotor.c src/input.c -Iinclude -lSDL2 -lGL -lglut -lopenblas -lm
 install: make
 	cp -f sdl /usr/local/bin/sdl
 uninstall:

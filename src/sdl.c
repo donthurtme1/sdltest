@@ -1,6 +1,9 @@
 #include <openblas/cblas.h>
 #include <time.h>
 #include <string.h>
+#include "rotor.h"
+#include "matrix.h"
+#include "input.h"
 #include "shaders.h"
 
 #define GL_GLEXT_PROTOTYPES
@@ -72,33 +75,13 @@ struct Camera {
 	float rotor[4], rotor_df[4];
 } camera;
 
+struct InputState {
+	int forward_key, right_key;
+} input_state;
+
 /* Function definitions */
 static void PollEvents(SDL_Event *event);
 static void Framestep(void);
-
-/* Input */
-extern void handle_events(void);
-extern void handle_keydown(SDL_Event *event);
-extern void handle_keyup(SDL_Event *event);
-extern void handle_mouse(SDL_Event *event);
-
-/* Matrix */
-extern void debug_calcndc(float *m);
-extern void print_matrix(char *s, float *mat, int m, int n);
-extern void project_matrix(float *m, float fov, float r, float near, float far);
-extern void rotate_object_transform(float *mat, float pitch, float yaw, float roll);
-extern void rotatex_matrix(float *m, float deg);
-extern void rotatey_matrix(float *m, float deg);
-extern void rotatez_matrix(float *m, float deg);
-
-/* Rotor */
-extern void normalise_rotor_scalar(float rotor[4], float mag);
-extern void normalise_rotor_bivec(float rotor[4], float mag);
-extern void normalise_rotor(float rotor[4], float mag);
-extern void geometric_product(float rotor[4], float a[3], float b[3]);
-extern void apply_rotor(float rotor[4], float (*vec)[3]);
-extern void combine_rotor(float S[4], float T[4], float result[4]);
-extern void rotor_to_matrix(float mat[16], float rotor[4]);
 
 void
 PollEvents(SDL_Event *event) {
@@ -120,8 +103,8 @@ PollEvents(SDL_Event *event) {
 
 void
 Framestep(void) {
+	/* Cube */
 	combine_rotor(cube.rotor_delta, cube.rotor, cube.rotor);
-	combine_rotor(camera.rotor_df, camera.rotor, camera.rotor);
 	for (int i = 0; i < 3; i++) {
 		rotor_to_matrix(transform[i], cube.rotor);
 		cblas_saxpy(3, 1.0f, (float [3]){ (i - 1) * 1.5f, (i - 1) * 1.5f, 3.0f }, 1, &transform[i][12], 1);
@@ -129,6 +112,11 @@ Framestep(void) {
 		glBufferData(GL_UNIFORM_BUFFER, sizeof transform[i], transform[i], GL_STATIC_DRAW);
 	}
 
+	/* Camera position */
+	cblas_saxpy(3, 1.0f, camera.pos_df, 1, camera.pos, 1);
+
+	/* Camera rotation */
+	combine_rotor(camera.rotor_df, camera.rotor, camera.rotor);
 	float camrotation[16], camtransform[16] = IDENTITY_MATRIX;
 	rotor_to_matrix(camrotation, camera.rotor);
 	cblas_saxpy(3, -1.0f, camera.pos, 1, &camtransform[12], 1);

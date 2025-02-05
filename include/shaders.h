@@ -1,5 +1,5 @@
-#ifndef SHADERS_H
-#define SHADERS_H
+#ifndef INCLUDE_SHADERS_H
+#define INCLUDE_SHADERS_H
 
 const char *const vertex_glsl = "\
 #version 460\n\
