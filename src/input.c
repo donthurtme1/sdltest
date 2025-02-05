@@ -1,6 +1,7 @@
 #include <openblas/cblas.h>
 #include <SDL2/SDL.h>
 #include "rotor.h"
+#include "input.h"
 
 /* Global state */
 extern int run;
@@ -11,9 +12,7 @@ extern struct Camera {
 	float pos[3], pos_df[3];
 	float rotor[4], rotor_df[4];
 } camera;
-extern struct InputState {
-	int forward_key, right_key;
-} input_state;
+extern enum InputAction input_state;
 
 void
 handle_keydown(SDL_Event *event) {
@@ -49,16 +48,16 @@ handle_keydown(SDL_Event *event) {
 				normalise_rotor_bivec(cube.rotor_delta, 0.05f);
 				break;
 			case SDLK_w:
-				camera.pos_df[2] += 0.02f;
+				input_state |= FORWARD;
 				break;
 			case SDLK_s:
-				camera.pos_df[2] -= 0.02f;
+				input_state |= BACK;
 				break;
 			case SDLK_d:
-				camera.pos_df[0] += 0.02f;
+				input_state |= LEFT;
 				break;
 			case SDLK_a:
-				camera.pos_df[0] -= 0.02f;
+				input_state |= RIGHT;
 				break;
 		}
 	}
@@ -94,17 +93,16 @@ handle_keyup(SDL_Event *event) {
 				normalise_rotor_bivec(cube.rotor_delta, 0.05f);
 				break;
 			case SDLK_w:
-				camera.pos_df[2] -= 0.02f;
-				input_state.forward_key = 1;
+				input_state &= ~FORWARD;
 				break;
 			case SDLK_s:
-				camera.pos_df[2] += 0.02f;
+				input_state &= ~BACK;
 				break;
 			case SDLK_d:
-				camera.pos_df[0] -= 0.02f;
+				input_state &= ~RIGHT;
 				break;
 			case SDLK_a:
-				camera.pos_df[0] += 0.02f;
+				input_state &= ~LEFT;
 				break;
 		}
 	}

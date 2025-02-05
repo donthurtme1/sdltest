@@ -38,6 +38,14 @@ normalise_rotor(float rotor[4], float len) {
 }
 
 void
+normalise_vec(float vec[3], float len) {
+	register float r = sqrtf((vec[0]*vec[0]) + (vec[1]*vec[1]) + (vec[2]*vec[2]) + (vec[3]*vec[3]));
+	vec[0] *= len / r;
+	vec[1] *= len / r;
+	vec[2] *= len / r;
+}
+
+void
 geometric_product(float rotor[4], float a[3], float b[3]) {
 	/* Normalise vectors */
 	cblas_sscal(3, 1 / sqrtf(cblas_sdot(3, b, 1, b, 1)), b, 1);

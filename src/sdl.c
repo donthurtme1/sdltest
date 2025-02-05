@@ -75,9 +75,7 @@ struct Camera {
 	float rotor[4], rotor_df[4];
 } camera;
 
-struct InputState {
-	int forward_key, right_key;
-} input_state;
+enum InputAction input_state;
 
 /* Function definitions */
 static void PollEvents(SDL_Event *event);
@@ -85,19 +83,21 @@ static void Framestep(void);
 
 void
 PollEvents(SDL_Event *event) {
-	switch (event->type) {
-		case SDL_KEYDOWN:
-			handle_keydown(event);
-			break;
-		case SDL_KEYUP:
-			handle_keyup(event);
-			break;
-		case SDL_MOUSEMOTION:
-			handle_mouse(event);
-			break;
-		case SDL_QUIT:
-			run = 0;
-			break;
+	while (SDL_PollEvent(event)) {
+		switch (event->type) {
+			case SDL_KEYDOWN:
+				handle_keydown(event);
+				break;
+			case SDL_KEYUP:
+				handle_keyup(event);
+				break;
+			case SDL_MOUSEMOTION:
+				handle_mouse(event);
+				break;
+			case SDL_QUIT:
+				run = 0;
+				break;
+		}
 	}
 }
 
@@ -112,11 +112,18 @@ Framestep(void) {
 		glBufferData(GL_UNIFORM_BUFFER, sizeof transform[i], transform[i], GL_STATIC_DRAW);
 	}
 
-	/* Camera position */
+	/* Camera transform */
+	combine_rotor(camera.rotor_df, camera.rotor, camera.rotor);
+	if (input_state & FORWARD || input_state & BACK) {
+		cblas_scopy(3, (float [3]){ 0, 0, 1 }, 1, camera.pos_df, 1);
+		normalise_vec(camera.pos_df, 0.02f);
+		apply_rotor(camera.rotor, camera.pos_df);
+	} else {
+		memset(camera.pos_df, 0, sizeof camera.pos_df);
+	}
 	cblas_saxpy(3, 1.0f, camera.pos_df, 1, camera.pos, 1);
 
-	/* Camera rotation */
-	combine_rotor(camera.rotor_df, camera.rotor, camera.rotor);
+	/* Camera matrix */
 	float camrotation[16], camtransform[16] = IDENTITY_MATRIX;
 	rotor_to_matrix(camrotation, camera.rotor);
 	cblas_saxpy(3, -1.0f, camera.pos, 1, &camtransform[12], 1);
@@ -206,9 +213,7 @@ main(int argc, char *argv[]) {
 	static struct timespec monotime;
 	clock_gettime(CLOCK_MONOTONIC, &monotime);
 	while (run > 0) {
-		while (SDL_PollEvent(&event)) {
-			PollEvents(&event);
-		}
+		PollEvents(&event);
 
 		/* Update */
 		Framestep();
