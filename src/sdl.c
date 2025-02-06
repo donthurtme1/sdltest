@@ -65,7 +65,11 @@ static unsigned int cube_idata[] = {
 
 /* Global state */
 int fps = 128;
-int run = 1;
+int run = 1; // Continue game loop
+float sens = 0.0002f; // Mouse sensitivity
+struct InputAction {
+	int forward, right;
+} input_state; // Struct containing which buttons are being pressed
 
 struct Cube {
 	float rotor[4], rotor_delta[4];
@@ -74,8 +78,6 @@ struct Camera {
 	float pos[3], pos_df[3];
 	float rotor[4], rotor_df[4];
 } camera;
-
-enum InputAction input_state;
 
 /* Function definitions */
 static void PollEvents(SDL_Event *event);
@@ -104,7 +106,7 @@ PollEvents(SDL_Event *event) {
 void
 Framestep(void) {
 	/* Cube */
-	combine_rotor(cube.rotor_delta, cube.rotor, cube.rotor);
+	combine_rotor(cube.rotor, cube.rotor_delta, cube.rotor);
 	for (int i = 0; i < 3; i++) {
 		rotor_to_matrix(transform[i], cube.rotor);
 		cblas_saxpy(3, 1.0f, (float [3]){ (i - 1) * 1.5f, (i - 1) * 1.5f, 3.0f }, 1, &transform[i][12], 1);
@@ -113,14 +115,16 @@ Framestep(void) {
 	}
 
 	/* Camera transform */
-	combine_rotor(camera.rotor_df, camera.rotor, camera.rotor);
-	if (input_state & FORWARD || input_state & BACK) {
-		cblas_scopy(3, (float [3]){ 0, 0, 1 }, 1, camera.pos_df, 1);
-		normalise_vec(camera.pos_df, 0.02f);
-		apply_rotor(camera.rotor, camera.pos_df);
-	} else {
+	combine_rotor(camera.rotor, camera.rotor_df, camera.rotor);
+	if (input_state.forward == 0 && input_state.right == 0) {
 		memset(camera.pos_df, 0, sizeof camera.pos_df);
+		goto skip_movement;
 	}
+	cblas_scopy(3, (float [3]){ input_state.right, 0, input_state.forward }, 1, camera.pos_df, 1);
+	normalise_vec(camera.pos_df, 0.02f);
+	apply_rotor(camera.rotor, camera.pos_df);
+	printf("%f %f %f\n", camera.pos_df[0] * 100, camera.pos_df[1] * 100, camera.pos_df[2] * 100);
+skip_movement:
 	cblas_saxpy(3, 1.0f, camera.pos_df, 1, camera.pos, 1);
 
 	/* Camera matrix */
@@ -214,8 +218,6 @@ main(int argc, char *argv[]) {
 	clock_gettime(CLOCK_MONOTONIC, &monotime);
 	while (run > 0) {
 		PollEvents(&event);
-
-		/* Update */
 		Framestep();
 
 		/* Render */

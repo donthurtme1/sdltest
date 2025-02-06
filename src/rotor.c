@@ -39,7 +39,8 @@ normalise_rotor(float rotor[4], float len) {
 
 void
 normalise_vec(float vec[3], float len) {
-	register float r = sqrtf((vec[0]*vec[0]) + (vec[1]*vec[1]) + (vec[2]*vec[2]) + (vec[3]*vec[3]));
+	register float r = sqrtf((vec[0]*vec[0]) + (vec[1]*vec[1]) + (vec[2]*vec[2]));
+	printf("%f\n", r);
 	vec[0] *= len / r;
 	vec[1] *= len / r;
 	vec[2] *= len / r;
@@ -52,13 +53,20 @@ geometric_product(float rotor[4], float a[3], float b[3]) {
 	cblas_sscal(3, 1 / sqrtf(cblas_sdot(3, a, 1, a, 1)), a, 1);
 	/* Calculate rotor */
 	rotor[0] = cblas_sdot(3, b, 1, a, 1);
-	rotor[1] = (b[0] * a[1]) - (b[1] * a[0]);
-	rotor[2] = (b[1] * a[2]) - (b[2] * a[1]);
-	rotor[3] = (b[2] * a[0]) - (b[0] * a[2]);
+	rotor[1] = (a[0] * b[1]) - (a[1] * b[0]);
+	rotor[2] = (a[1] * b[2]) - (a[2] * b[1]);
+	rotor[3] = (a[2] * b[0]) - (a[0] * b[2]);
 }
 
 void
-apply_rotor(float rotor[4], float vec[3]) {
+apply_rotor(float inrotor[4], float vec[3]) {
+	/* Calculate inverse rotor
+	 * TODO: instead recalculate the rest of the function to be R^vR instead of RvR^ (R^ is R inverse) */
+	float rotor[4];
+	rotor[0] = inrotor[0];
+	rotor[1] = -inrotor[1];
+	rotor[2] = -inrotor[2];
+	rotor[3] = -inrotor[3];
 	/* Assumes the rotor is formed by the multiplication of two unit vectors */
 	float S_x = rotor[0]*vec[0] + rotor[1]*vec[1] - rotor[3]*vec[2];
     float S_y = rotor[0]*vec[1] - rotor[1]*vec[0] + rotor[2]*vec[2];

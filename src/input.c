@@ -12,7 +12,9 @@ extern struct Camera {
 	float pos[3], pos_df[3];
 	float rotor[4], rotor_df[4];
 } camera;
-extern enum InputAction input_state;
+extern struct InputAction {
+	int forward, right;
+} input_state;
 
 void
 handle_keydown(SDL_Event *event) {
@@ -32,32 +34,32 @@ handle_keydown(SDL_Event *event) {
 				combine_rotor(rotor, camera.rotor_df, camera.rotor_df);
 				break;
 			case SDLK_UP:
-				cube.rotor_delta[2] -= 0.05f;
-				normalise_rotor_bivec(cube.rotor_delta, 0.05f);
-				break;
-			case SDLK_DOWN:
 				cube.rotor_delta[2] += 0.05f;
 				normalise_rotor_bivec(cube.rotor_delta, 0.05f);
 				break;
-			case SDLK_LEFT:
-				cube.rotor_delta[3] -= 0.05f;
+			case SDLK_DOWN:
+				cube.rotor_delta[2] -= 0.05f;
 				normalise_rotor_bivec(cube.rotor_delta, 0.05f);
 				break;
-			case SDLK_RIGHT:
+			case SDLK_LEFT:
 				cube.rotor_delta[3] += 0.05f;
 				normalise_rotor_bivec(cube.rotor_delta, 0.05f);
 				break;
+			case SDLK_RIGHT:
+				cube.rotor_delta[3] -= 0.05f;
+				normalise_rotor_bivec(cube.rotor_delta, 0.05f);
+				break;
 			case SDLK_w:
-				input_state |= FORWARD;
+				input_state.forward = 1;
 				break;
 			case SDLK_s:
-				input_state |= BACK;
+				input_state.forward = -1;
 				break;
 			case SDLK_d:
-				input_state |= LEFT;
+				input_state.right = 1;
 				break;
 			case SDLK_a:
-				input_state |= RIGHT;
+				input_state.right = -1;
 				break;
 		}
 	}
@@ -93,16 +95,20 @@ handle_keyup(SDL_Event *event) {
 				normalise_rotor_bivec(cube.rotor_delta, 0.05f);
 				break;
 			case SDLK_w:
-				input_state &= ~FORWARD;
+				if (input_state.forward == 1)
+					input_state.forward = 0;
 				break;
 			case SDLK_s:
-				input_state &= ~BACK;
+				if (input_state.forward == -1)
+					input_state.forward = 0;
 				break;
 			case SDLK_d:
-				input_state &= ~RIGHT;
+				if (input_state.right == 1)
+					input_state.right = 0;
 				break;
 			case SDLK_a:
-				input_state &= ~LEFT;
+				if (input_state.right == -1)
+					input_state.right = 0;
 				break;
 		}
 	}
@@ -110,9 +116,10 @@ handle_keyup(SDL_Event *event) {
 
 void
 handle_mouse(SDL_Event *event) {
+	extern float sens;
 	float rotor[4] = { };
 	rotor[0] = 1.0f;
-	rotor[2] += 0.0002f * event->motion.yrel;
-	rotor[3] += 0.0002f * event->motion.xrel;
-	combine_rotor(rotor, camera.rotor, camera.rotor);
+	rotor[2] -= sens * event->motion.yrel;
+	rotor[3] -= sens * event->motion.xrel;
+	combine_rotor(camera.rotor, rotor, camera.rotor);
 }
