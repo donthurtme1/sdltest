@@ -40,7 +40,6 @@ normalise_rotor(float rotor[4], float len) {
 void
 normalise_vec(float vec[3], float len) {
 	register float r = sqrtf((vec[0]*vec[0]) + (vec[1]*vec[1]) + (vec[2]*vec[2]));
-	printf("%f\n", r);
 	vec[0] *= len / r;
 	vec[1] *= len / r;
 	vec[2] *= len / r;
@@ -78,6 +77,18 @@ apply_rotor(float inrotor[4], float vec[3]) {
     vec[2] = S_z*rotor[0] + S_xyz*rotor[1] - S_y*rotor[2] + S_x*rotor[3];
 }
 
+void
+apply_rotor_inverse(float rotor[4], float vec[3]) {
+	/* Assumes the rotor is formed by the multiplication of two unit vectors */
+	float S_x = rotor[0]*vec[0] + rotor[1]*vec[1] - rotor[3]*vec[2];
+    float S_y = rotor[0]*vec[1] - rotor[1]*vec[0] + rotor[2]*vec[2];
+    float S_z = rotor[0]*vec[2] - rotor[2]*vec[1] + rotor[3]*vec[0];
+    float S_xyz = rotor[1]*vec[2] + rotor[2]*vec[0] + rotor[3]*vec[1];
+
+    vec[0] = S_x*rotor[0] + S_y*rotor[1] + S_xyz*rotor[2] - S_z*rotor[3];
+    vec[1] = S_y*rotor[0] - S_x*rotor[1] + S_z*rotor[2] + S_xyz*rotor[3];
+    vec[2] = S_z*rotor[0] + S_xyz*rotor[1] - S_y*rotor[2] + S_x*rotor[3];
+}
 void
 combine_rotor(float S[4], float T[4], float result[4]) {
 	float R[4];

@@ -5,6 +5,7 @@
 #include "matrix.h"
 #include "input.h"
 #include "shaders.h"
+#include "types.h"
 
 #define GL_GLEXT_PROTOTYPES
 #include <GL/gl.h>
@@ -13,13 +14,6 @@
 #include <SDL2/SDL.h>
 
 #define IDENTITY_MATRIX { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 }
-
-/* Stores other player's data */
-struct Player {
-	float pos[3], vel[3], accel[3], jerk[3];
-	float rotor[4], rotor_delta[4];
-	short rtr_2df[4], rtr_3df[4]; // Used for prediction to mitigate lag
-};
 
 /* SDL stuff */
 static SDL_Window *window;
@@ -44,7 +38,49 @@ static unsigned int square_idata[] = {
 	0, 1, 2, 2, 3, 0
 };
 
+static float ncube_vdata[] = {
+    // Create back face
+     0.5f,  0.5f, -0.5f, 0.0f,  0.0f, -1.0f,
+     0.5f, -0.5f, -0.5f, 0.0f,  0.0f, -1.0f,
+    -0.5f, -0.5f, -0.5f, 0.0f,  0.0f, -1.0f,
+    -0.5f,  0.5f, -0.5f, 0.0f,  0.0f, -1.0f,
+    // left face
+    -0.5f,  0.5f, -0.5f, 1.0f,  0.0f,  0.0f,
+    -0.5f, -0.5f, -0.5f, 1.0f,  0.0f,  0.0f,
+    -0.5f, -0.5f,  0.5f, 1.0f,  0.0f,  0.0f,
+    -0.5f,  0.5f,  0.5f, 1.0f,  0.0f,  0.0f,
+    // bottom face
+     0.5f, -0.5f, -0.5f, 0.0f, -1.0f,  0.0f,
+     0.5f, -0.5f,  0.5f, 0.0f, -1.0f,  0.0f,
+    -0.5f, -0.5f,  0.5f, 0.0f, -1.0f,  0.0f,
+    -0.5f, -0.5f, -0.5f, 0.0f, -1.0f,  0.0f,
+    // front face
+    -0.5f,  0.5f,  0.5f, 0.0f,  0.0f,  1.0f,
+    -0.5f, -0.5f,  0.5f, 0.0f,  0.0f,  1.0f,
+     0.5f, -0.5f,  0.5f, 0.0f,  0.0f,  1.0f,
+     0.5f,  0.5f,  0.5f, 0.0f,  0.0f,  1.0f,
+    // right face
+     0.5f,  0.5f,  0.5f, 1.0f,  0.0f,  0.0f,
+     0.5f, -0.5f,  0.5f, 1.0f,  0.0f,  0.0f,
+     0.5f, -0.5f, -0.5f, 1.0f,  0.0f,  0.0f,
+     0.5f,  0.5f, -0.5f, 1.0f,  0.0f,  0.0f,
+    // top face
+     0.5f,  0.5f,  0.5f, 0.0f,  1.0f,  0.0f,
+     0.5f,  0.5f, -0.5f, 0.0f,  1.0f,  0.0f,
+    -0.5f,  0.5f, -0.5f, 0.0f,  1.0f,  0.0f,
+    -0.5f,  0.5f,  0.5f, 0.0f,  1.0f,  0.0f,
+};
+static int ncube_idata[] = {
+     0,  3,  2,  2,  1,  0,  // Create back face
+     4,  7,  5,  5,  7,  6,  // Create left face
+     8,  11, 9, 9,  11, 10,  // Create bottom face
+    12, 15, 13, 13, 15, 14,  // Create front face
+    16, 19, 17, 17, 19, 18,  // Create right face
+    20, 23, 21, 21, 23, 22   // Create top face
+};
+
 static float cube_vdata[] = {
+	/* Position */       /* Colour */
 	-0.5f, -0.5f, -0.5f, 1.0f, 0.0f, 0.0f,
 	 0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 0.0f,
 	 0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 1.0f,
@@ -60,24 +96,17 @@ static unsigned int cube_idata[] = {
 	1, 5, 6, 6, 2, 1, // Right face
 	4, 0, 3, 3, 7, 4, // Left face
 	3, 2, 6, 6, 7, 3, // Top face
-	0, 4, 5, 5, 1, 0  // Bottom face
+	5, 1, 0, 0, 4, 5, // Bottom face
 };
 
 /* Global state */
-int fps = 128;
+int targetfps = 128;
 int run = 1; // Continue game loop
 float sens = 0.0002f; // Mouse sensitivity
-struct InputAction {
-	int forward, right;
-} input_state; // Struct containing which buttons are being pressed
+struct InputAction input_state;
 
-struct Cube {
-	float rotor[4], rotor_delta[4];
-} cube;
-struct Camera {
-	float pos[3], pos_df[3];
-	float rotor[4], rotor_df[4];
-} camera;
+struct Cube cube;
+struct Camera camera;
 
 /* Function definitions */
 static void PollEvents(SDL_Event *event);
@@ -115,21 +144,17 @@ Framestep(void) {
 	}
 
 	/* Camera transform */
-	combine_rotor(camera.rotor, camera.rotor_df, camera.rotor);
-	if (input_state.forward == 0 && input_state.right == 0) {
-		memset(camera.pos_df, 0, sizeof camera.pos_df);
-		goto skip_movement;
+	combine_rotor(camera.rotor_df, camera.rotor, camera.rotor);
+	if (input_state.right != 0 || input_state.up != 0 || input_state.forward != 0) {
+		cblas_scopy(3, (float [3]){ input_state.right, input_state.up, input_state.forward }, 1, camera.pos_df, 1);
+		normalise_vec(camera.pos_df, 0.02f);
+		apply_rotor(camera.rotor, camera.pos_df);
+		cblas_saxpy(3, 1.0f, camera.pos_df, 1, camera.pos, 1);
 	}
-	cblas_scopy(3, (float [3]){ input_state.right, 0, input_state.forward }, 1, camera.pos_df, 1);
-	normalise_vec(camera.pos_df, 0.02f);
-	apply_rotor(camera.rotor, camera.pos_df);
-	printf("%f %f %f\n", camera.pos_df[0] * 100, camera.pos_df[1] * 100, camera.pos_df[2] * 100);
-skip_movement:
-	cblas_saxpy(3, 1.0f, camera.pos_df, 1, camera.pos, 1);
 
 	/* Camera matrix */
 	float camrotation[16], camtransform[16] = IDENTITY_MATRIX;
-	rotor_to_matrix(camrotation, camera.rotor);
+	rotor_to_matrix(camrotation, (float [4]){ camera.rotor[0], -camera.rotor[1], -camera.rotor[2], -camera.rotor[3] });
 	cblas_saxpy(3, -1.0f, camera.pos, 1, &camtransform[12], 1);
 	cblas_sgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, 4, 4, 4, 1.0f, camrotation, 4, camtransform, 4, 0.0f, view, 4);
 	cblas_sgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, 4, 4, 4, 1.0f, project, 4, view, 4, 0.0f, viewproject, 4);
@@ -147,9 +172,10 @@ main(int argc, char *argv[]) {
 	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
 	window = SDL_CreateWindow("doom", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 1920, 1080, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_INPUT_GRABBED);
-	SDL_SetWindowOpacity(window, 0.5f);
 	context = SDL_GL_CreateContext(window);
+	SDL_SetWindowOpacity(window, 0.5f);
 	SDL_SetRelativeMouseMode(SDL_TRUE);
+	SDL_ShowCursor(SDL_DISABLE);
 
 	/* Initialise glut library */
 	glutInit(&argc, argv);
@@ -162,17 +188,39 @@ main(int argc, char *argv[]) {
 	glDisable(GL_STENCIL_TEST);
 
 	/* Load, compile and link shaders */
+	int success;
 	vshader = glCreateShader(GL_VERTEX_SHADER);
 	glShaderSource(vshader, 1, &vertex_glsl, NULL);
 	glCompileShader(vshader);
+	glGetShaderiv(vshader, GL_COMPILE_STATUS, &success);
+	if (success == GL_FALSE) {
+		int len = 0;
+		char infolog[128];
+		glGetShaderInfoLog(vshader, sizeof infolog, &len, infolog);
+		fwrite(infolog, sizeof(char), len, stderr);
+	}
 	fshader = glCreateShader(GL_FRAGMENT_SHADER);
 	glShaderSource(fshader, 1, &fragment_glsl, NULL);
 	glCompileShader(fshader);
+	glGetShaderiv(fshader, GL_COMPILE_STATUS, &success);
+	if (success == GL_FALSE) {
+		int len = 0;
+		char infolog[128];
+		glGetShaderInfoLog(fshader, sizeof infolog, &len, infolog);
+		fwrite(infolog, sizeof(char), len, stderr);
+	}
 
 	shader_program = glCreateProgram();
 	glAttachShader(shader_program, vshader);
 	glAttachShader(shader_program, fshader);
 	glLinkProgram(shader_program);
+	glGetProgramiv(shader_program, GL_LINK_STATUS, &success);
+	if (success == GL_FALSE) {
+		int len = 0;
+		char infolog[128];
+		glGetProgramInfoLog(shader_program, sizeof infolog, &len, infolog);
+		fwrite(infolog, sizeof(char), len, stderr);
+	}
 	glUseProgram(shader_program);
 
 	/* Create vertex array, vertex buffer and index buffer objects */
@@ -182,9 +230,9 @@ main(int argc, char *argv[]) {
 	glGenBuffers(1, &ibuf);
 
 	glBindBuffer(GL_ARRAY_BUFFER, vbuf);
-	glBufferData(GL_ARRAY_BUFFER, sizeof cube_vdata, cube_vdata, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof ncube_vdata, ncube_vdata, GL_STATIC_DRAW);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibuf);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof cube_idata, cube_idata, GL_STATIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof ncube_idata, ncube_idata, GL_STATIC_DRAW);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)0);
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)12);
 	glEnableVertexAttribArray(0);
@@ -217,7 +265,10 @@ main(int argc, char *argv[]) {
 	static struct timespec monotime;
 	clock_gettime(CLOCK_MONOTONIC, &monotime);
 	while (run > 0) {
+		/* Input */
 		PollEvents(&event);
+
+		/* Game */
 		Framestep();
 
 		/* Render */
@@ -231,7 +282,7 @@ main(int argc, char *argv[]) {
 		SDL_GL_SwapWindow(window);
 
 		/* Frame advance */
-		monotime.tv_nsec += (1000000000 / fps);
+		monotime.tv_nsec += (1000000000 / targetfps);
 		if (monotime.tv_nsec >= 1000000000) {
 			monotime.tv_nsec -= 1000000000;
 			monotime.tv_sec++;

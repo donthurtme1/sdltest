@@ -2,19 +2,13 @@
 #include <SDL2/SDL.h>
 #include "rotor.h"
 #include "input.h"
+#include "types.h"
 
 /* Global state */
 extern int run;
-extern struct Cube {
-	float rotor[4], rotor_delta[4];
-} cube;
-extern struct Camera {
-	float pos[3], pos_df[3];
-	float rotor[4], rotor_df[4];
-} camera;
-extern struct InputAction {
-	int forward, right;
-} input_state;
+extern struct Cube cube;
+extern struct Camera camera;
+extern struct InputAction input_state;
 
 void
 handle_keydown(SDL_Event *event) {
@@ -60,6 +54,12 @@ handle_keydown(SDL_Event *event) {
 				break;
 			case SDLK_a:
 				input_state.right = -1;
+				break;
+			case SDLK_SPACE:
+				input_state.up = 1;
+				break;
+			case SDLK_LSHIFT:
+				input_state.up = -1;
 				break;
 		}
 	}
@@ -110,6 +110,14 @@ handle_keyup(SDL_Event *event) {
 				if (input_state.right == -1)
 					input_state.right = 0;
 				break;
+			case SDLK_SPACE:
+				if (input_state.up == 1)
+					input_state.up = 0;
+				break;
+			case SDLK_LSHIFT:
+				if (input_state.up == -1)
+					input_state.up = 0;
+				break;
 		}
 	}
 }
@@ -119,7 +127,7 @@ handle_mouse(SDL_Event *event) {
 	extern float sens;
 	float rotor[4] = { };
 	rotor[0] = 1.0f;
-	rotor[2] -= sens * event->motion.yrel;
-	rotor[3] -= sens * event->motion.xrel;
-	combine_rotor(camera.rotor, rotor, camera.rotor);
+	rotor[2] += sens * event->motion.yrel;
+	rotor[3] += sens * event->motion.xrel;
+	combine_rotor(rotor, camera.rotor, camera.rotor);
 }
