@@ -1,3 +1,6 @@
+#ifndef MATRIX_C
+#define MATRIX_C
+
 #include <openblas/cblas.h>
 #include <math.h>
 #include <stdio.h>
@@ -89,3 +92,5 @@ rotatez_matrix(float *mat, float deg) {
 	mat[4] = -1 * sinf(rad);
 	mat[5] = cosf(rad);
 }
+
+#endif

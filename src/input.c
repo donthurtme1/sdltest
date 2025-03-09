@@ -1,7 +1,9 @@
+#ifndef INPUT_C
+#define INPUT_C
+
 #include <openblas/cblas.h>
 #include <SDL2/SDL.h>
-#include "rotor.h"
-#include "input.h"
+#include "rotor.c"
 #include "types.h"
 
 /* Global state */
@@ -131,3 +133,5 @@ handle_mouse(SDL_Event *event) {
 	rotor[3] += sens * event->motion.xrel;
 	combine_rotor(rotor, camera.rotor, camera.rotor);
 }
+
+#endif

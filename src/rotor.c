@@ -1,3 +1,6 @@
+#ifndef ROTOR_C
+#define ROTOR_C
+
 #include <openblas/cblas.h>
 #include <math.h>
 #include <string.h>
@@ -107,3 +110,5 @@ rotor_to_matrix(float mat[16], float rotor[4]) {
 	apply_rotor(rotor, &mat[4]);
 	apply_rotor(rotor, &mat[8]);
 }
+
+#endif
