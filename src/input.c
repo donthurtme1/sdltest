@@ -8,7 +8,7 @@
 extern int run;
 extern struct Cube cube;
 extern struct Camera camera;
-extern struct InputAction input_state;
+extern struct InputSet input_state;
 
 void
 handle_keydown(SDL_Event *event) {

@@ -1,9 +1,6 @@
 #include <openblas/cblas.h>
 #include <time.h>
 #include <string.h>
-#include "rotor.h"
-#include "matrix.h"
-#include "input.h"
 #include "shaders.h"
 #include "types.h"
 
@@ -103,17 +100,21 @@ static unsigned int cube_idata[] = {
 int targetfps = 128;
 int run = 1; // Continue game loop
 float sens = 0.0002f; // Mouse sensitivity
-struct InputAction input_state;
+struct InputSet input_state;
 
 struct Cube cube;
 struct Camera camera;
 
 /* Function definitions */
-static void PollEvents(SDL_Event *event);
-static void Framestep(void);
+#include "rotor.c"
+#include "matrix.c"
+#include "input.c"
+
+static void pollevents(SDL_Event *event);
+static void framestep(void);
 
 void
-PollEvents(SDL_Event *event) {
+pollevents(SDL_Event *event) {
 	while (SDL_PollEvent(event)) {
 		switch (event->type) {
 			case SDL_KEYDOWN:
@@ -133,7 +134,7 @@ PollEvents(SDL_Event *event) {
 }
 
 void
-Framestep(void) {
+framestep(void) {
 	/* Cube */
 	combine_rotor(cube.rotor, cube.rotor_delta, cube.rotor);
 	for (int i = 0; i < 3; i++) {
@@ -244,18 +245,42 @@ main(int argc, char *argv[]) {
 		cblas_saxpy(3, 1.0f, (float [3]){ (i - 1) * 1.5f, (i - 1) * 1.5f, 3.0f }, 1, &transform[i][12], 1);
 	}
 	cblas_saxpy(4, 1.0f, (float [4]){ 1.0f, 1.0f, 1.0f, 1.0f }, 1, project, 5);
-	project_matrix(project, 90.0f, (float)winsize.width / winsize.height, 0.015625f, 2048.015625f);
+	project_matrix(project, 90.0f, (float)winsize.width / winsize.height,
+			0.015625f, 2048.015625f);
 
-	/* Create uniform buffer objects */
+	/* Cube transform UBOs */
 	glGenBuffers(3, ubuf_transform);
 	for (int i = 0; i < 3; i++) {
 		glBindBuffer(GL_UNIFORM_BUFFER, ubuf_transform[i]);
-		glBufferData(GL_UNIFORM_BUFFER, sizeof transform[i], transform[i], GL_STATIC_DRAW);
+		glBufferData(GL_UNIFORM_BUFFER, sizeof transform[i], transform[i],
+				GL_STATIC_DRAW);
 	}
+
+	/* View-projection matrix UBO */
+	GLuint ubuf_camera;
+	struct CameraData cameradata;
+	memcpy(&cameradata.mat_viewproj, &project, sizeof(float [16]));
+	memcpy(&cameradata.cam_pos, &camera.pos, sizeof(float [3]));
 	glGenBuffers(1, &ubuf_viewproject);
 	glBindBuffer(GL_UNIFORM_BUFFER, ubuf_viewproject);
 	glBufferData(GL_UNIFORM_BUFFER, sizeof project, project, GL_STATIC_DRAW);
 	glBindBufferBase(GL_UNIFORM_BUFFER, 1, ubuf_viewproject);
+
+	/* Point light UBO */
+	GLuint ubuf_pointlight;
+	struct PointLightData plight = { { 10, 10, 10 }, { 1, 1, 1 }, 0.01f };
+	glGenBuffers(1, &ubuf_pointlight);
+	glBindBuffer(GL_UNIFORM_BUFFER, ubuf_pointlight);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof plight, &plight, GL_STATIC_DRAW);
+	glBindBufferBase(GL_UNIFORM_BUFFER, 2, ubuf_pointlight);
+
+	/* Material UBO */
+	GLuint ubuf_redmaterial;
+	struct MaterialData redmaterial = { { 0.8, 0.2, 0.2 }, { 0.9, 0.9, 0.9 }, 15.0f };
+	glGenBuffers(1, &ubuf_redmaterial);
+	glBindBuffer(GL_UNIFORM_BUFFER, ubuf_redmaterial);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof redmaterial, &redmaterial, GL_STATIC_DRAW);
+	glBindBufferBase(GL_UNIFORM_BUFFER, 3, ubuf_redmaterial);
 
 	/* Initialise rotors */
 	cube.rotor[0] = cube.rotor_delta[0] = 1.0f;
@@ -266,10 +291,10 @@ main(int argc, char *argv[]) {
 	clock_gettime(CLOCK_MONOTONIC, &monotime);
 	while (run > 0) {
 		/* Input */
-		PollEvents(&event);
+		pollevents(&event);
 
 		/* Game */
-		Framestep();
+		framestep();
 
 		/* Render */
 		SDL_GetWindowSize(window, &winsize.width, &winsize.height);
