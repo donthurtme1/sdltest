@@ -113,8 +113,7 @@ struct Camera camera;
 static void pollevents(SDL_Event *event);
 static void framestep(void);
 
-void
-pollevents(SDL_Event *event) {
+void pollevents(SDL_Event *event) {
 	while (SDL_PollEvent(event)) {
 		switch (event->type) {
 			case SDL_KEYDOWN:
@@ -133,8 +132,7 @@ pollevents(SDL_Event *event) {
 	}
 }
 
-void
-framestep(void) {
+void framestep(void) {
 	/* Cube */
 	combine_rotor(cube.rotor, cube.rotor_delta, cube.rotor);
 	for (int i = 0; i < 3; i++) {
@@ -163,8 +161,7 @@ framestep(void) {
 	glBufferData(GL_UNIFORM_BUFFER, sizeof viewproject, viewproject, GL_STATIC_DRAW);
 }
 
-int
-main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) {
 	/* Initialise SDL2 and create SDL2 window and context */
 	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);

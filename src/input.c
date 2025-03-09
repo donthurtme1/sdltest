@@ -12,8 +12,7 @@ extern struct Cube cube;
 extern struct Camera camera;
 extern struct InputSet input_state;
 
-void
-handle_keydown(SDL_Event *event) {
+void handle_keydown(SDL_Event *event) {
 	float rotor[4] = { };
 	if (event->key.repeat == 0) {
 		switch (event->key.keysym.sym) {
@@ -67,8 +66,7 @@ handle_keydown(SDL_Event *event) {
 	}
 }
 
-void
-handle_keyup(SDL_Event *event) {
+void handle_keyup(SDL_Event *event) {
 	static float rotor[4];
 	if (event->key.repeat == 0) {
 		switch (event->key.keysym.sym) {
@@ -124,8 +122,7 @@ handle_keyup(SDL_Event *event) {
 	}
 }
 
-void
-handle_mouse(SDL_Event *event) {
+void handle_mouse(SDL_Event *event) {
 	extern float sens;
 	float rotor[4] = { };
 	rotor[0] = 1.0f;
