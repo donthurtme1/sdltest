@@ -1,8 +1,24 @@
 #ifndef INCLUDE_SHADERS_H
 #define INCLUDE_SHADERS_H
 
-const char *const vertex_glsl = "\
+const char *const shader_vertex_glsl = "\
 #version 460\n\
+\n\
+/* Structures */\n\
+struct CameraStruct {\n\
+	mat4 viewproj;\n\
+	vec3 pos;\n\
+};\n\
+struct PointLightStruct {\n\
+	vec3 pos;\n\
+	vec3 intensity;\n\
+	float falloff;\n\
+};\n\
+struct MaterialStruct {\n\
+	vec3 diff_colour;\n\
+	vec3 spec_colour;\n\
+	float roughness;\n\
+};\n\
 \n\
 /* In variables */\n\
 layout(location = 0) in vec3 in_pos;\n\
@@ -34,9 +50,7 @@ layout(std140, binding = 3) uniform MaterialData {\n\
 layout(location = 0) smooth out vec3 out_vcolour;\n\
 \n\
 /* Functions */\n\
-vec3 blinnphong(in vec3 in_normal, in vec3 lightdir, in vec3 viewdir, in vec3\n\
-		light_irradiance, in vec3 diffuse_colour, in vec3 specular_colour, in\n\
-		float roughness) {\n\
+vec3 blinnphong(in vec3 in_normal, in vec3 lightdir, in vec3 viewdir, in vec3 light_irradiance, in vec3 diffuse_colour, in vec3 specular_colour, in float roughness) {\n\
 	vec3 H = normalize(viewdir + lightdir);\n\
 	vec3 S = pow(max(dot(in_normal, H), 0.0f), roughness) * specular_colour;\n\
 \n\
@@ -46,8 +60,7 @@ vec3 blinnphong(in vec3 in_normal, in vec3 lightdir, in vec3 viewdir, in vec3\n\
 	return view_colour;\n\
 }\n\
 \n\
-vec3 lightfalloff(in vec3 intensity, in float falloff, in vec3 light_pos, in vec3\n\
-		surface_pos) {\n\
+vec3 lightfalloff(in vec3 intensity, in float falloff, in vec3 light_pos, in vec3 surface_pos) {\n\
 	float r = distance(light_pos, surface_pos);\n\
 	return intensity / (falloff * r * r);\n\
 }\n\
@@ -63,14 +76,14 @@ void main() {\n\
 	vec3 light_dir = normalize(pl_pos - in_pos);\n\
 \n\
 	/* Calculate falloff */\n\
-	vec3 light_irradiance = lightfalloff(pl_intensity, pl_falloff, pl_pos, in_pos);\n\
+	vec3 light_irradiance = lightfalloff(pl_intensity, pl_falloff, pl_pos, in_pos) + 0.5f;\n\
 	out_vcolour = blinnphong(t_normal, light_dir, view_dir, light_irradiance,\n\
 			diff_colour, spec_colour, roughness);\n\
 	//out_vcolour = spec_colour;\n\
 }\n\
 ";
 
-const char *const fragment_glsl = "\
+const char *const shader_fragment_glsl = "\
 #version 460\n\
 \n\
 layout(location = 0) in vec3 colour;\n\

@@ -41,6 +41,9 @@ void normalise_rotor(float rotor[4], float len) {
 /* Normalise `vec` to magnitude `len` */
 void normalise_vec(float vec[3], float len) {
 	register float r = sqrtf((vec[0]*vec[0]) + (vec[1]*vec[1]) + (vec[2]*vec[2]));
+	if (r == 0) /* Prevent 'nan' error */
+		return;
+
 	vec[0] *= len / r;
 	vec[1] *= len / r;
 	vec[2] *= len / r;

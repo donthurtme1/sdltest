@@ -24,6 +24,7 @@ void debug_calcndc(float *m) {
 	print_matrix("debug_ndc_coords", ndc_coords, 3, 4);
 }
 
+/* Print matrix of `m` rows and `n` columns */
 void print_matrix(char *s, float *mat, int m, int n) {
 	int i, j;
 	printf("%s:\n", s);

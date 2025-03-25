@@ -20,7 +20,7 @@ struct Camera {
 
 /* Structs for passing data to the vertex shader */
 struct __attribute__((aligned(8))) CameraData {
-	float viewproj[16];
+	float mat[16];
 	float pos[3];
 };
 
