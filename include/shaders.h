@@ -35,8 +35,8 @@ layout(location = 0) smooth out vec3 out_vcolour;\n\
 \n\
 /* Functions */\n\
 vec3 blinnphong(in vec3 in_normal, in vec3 lightdir, in vec3 viewdir, in vec3\n\
-		light_irradiance, in vec3 diffuse_colour, in vec3 specular_colour, in float\n\
-		roughness) {\n\
+		light_irradiance, in vec3 diffuse_colour, in vec3 specular_colour, in\n\
+		float roughness) {\n\
 	vec3 H = normalize(viewdir + lightdir);\n\
 	vec3 S = pow(max(dot(in_normal, H), 0.0f), roughness) * specular_colour;\n\
 \n\
