@@ -29,6 +29,7 @@ void normalise_rotor_bivec(float rotor[4], float len) {
 	//printf("geo prod:  %f, %f, %f, %f\n\n", rotor[0], rotor[1], rotor[2], rotor[3]);
 }
 
+/* Normalise `rotor` to magnitude `len` */
 void normalise_rotor(float rotor[4], float len) {
 	register float r = sqrtf((rotor[0]*rotor[0]) + (rotor[1]*rotor[1]) + (rotor[2]*rotor[2]) + (rotor[3]*rotor[3]));
 	rotor[0] *= len / r;
@@ -37,6 +38,7 @@ void normalise_rotor(float rotor[4], float len) {
 	rotor[3] *= len / r;
 }
 
+/* Normalise `vec` to magnitude `len` */
 void normalise_vec(float vec[3], float len) {
 	register float r = sqrtf((vec[0]*vec[0]) + (vec[1]*vec[1]) + (vec[2]*vec[2]));
 	vec[0] *= len / r;
@@ -44,6 +46,9 @@ void normalise_vec(float vec[3], float len) {
 	vec[2] *= len / r;
 }
 
+/* Calculate the geometric product of two vectors, R = ab.
+ * The geometric product produces a rotor which when applied to
+ * vector `a`, produces the vector `b` */
 void geometric_product(float rotor[4], float a[3], float b[3]) {
 	/* Normalise vectors */
 	cblas_sscal(3, 1 / sqrtf(cblas_sdot(3, b, 1, b, 1)), b, 1);
