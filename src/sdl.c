@@ -96,8 +96,6 @@ void framestep(void) {
 	/* Update camera uniform buffer */
 	memcpy(g_cameradata.mat, gl.viewproject, sizeof(float [16]));
 	memcpy(g_cameradata.pos, g_camera.pos, sizeof(float [3]));
-	print_matrix("camdata.matrix", g_cameradata.mat, 4, 4);
-	print_matrix("camdata.position", g_cameradata.pos, 4, 1);
 	glBindBuffer(GL_UNIFORM_BUFFER, gl.ubuf_camera);
 	glBufferData(GL_UNIFORM_BUFFER, sizeof g_cameradata, &g_cameradata, GL_STATIC_DRAW);
 }
@@ -195,20 +193,18 @@ int main(int argc, char *argv[]) {
 	}
 
 	/* Camera view-projection matrix and position UBO */
-	memcpy(g_cameradata.mat, gl.project, sizeof(float [16]));
+	memcpy(g_cameradata.mat, gl.viewproject, sizeof(float [16]));
 	memcpy(g_cameradata.pos, g_camera.pos, sizeof(float [3]));
-	print_matrix("camdata.matrix", g_cameradata.mat, 4, 4);
-	print_matrix("camdata.position", g_cameradata.pos, 4, 1);
 	glGenBuffers(1, &gl.ubuf_camera);
 	glBindBuffer(GL_UNIFORM_BUFFER, gl.ubuf_camera);
-	glBufferData(GL_UNIFORM_BUFFER, sizeof g_cameradata, &g_cameradata, GL_STATIC_DRAW);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof g_cameradata, &g_cameradata, GL_DYNAMIC_DRAW);
 	glBindBufferBase(GL_UNIFORM_BUFFER, 1, gl.ubuf_camera);
 
 	/* Point light UBO */
 	GLuint ubuf_pointlight;
 	struct PointLightData plight = {
-		.pos = { 0, 0, 5 },
-		.colour = { 1, 1, 1 },
+		.pos = { 0.0f, 0.0f, 5.0f },
+		.colour = { 1.0f, 1.0f, 1.0f },
 		.falloff = 0.01f
 	};
 	glGenBuffers(1, &ubuf_pointlight);
@@ -219,8 +215,8 @@ int main(int argc, char *argv[]) {
 	/* Material UBO */
 	GLuint ubuf_redmaterial;
 	struct MaterialData redmaterial = {
-		.diff_colour = { 0.8, 0.2, 0.2 },
-		.spec_colour = { 0.9, 0.9, 0.9 },
+		.diff_colour = { 0.8f, 0.2f, 0.2f },
+		.spec_colour = { 0.8f, 0.4f, 0.4f },
 		.roughness = 15.0f
 	};
 	glGenBuffers(1, &ubuf_redmaterial);
