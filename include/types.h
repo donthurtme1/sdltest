@@ -19,10 +19,10 @@ struct Camera {
 };
 
 /* Structs for passing data to the vertex shader */
-struct __attribute__((aligned(8))) CameraData {
+typedef struct __attribute__((aligned(8))) CameraData {
 	float mat[16];
 	float pos[3];
-};
+} cameradatatypedefstruct;
 
 struct __attribute__((aligned(8))) PointLightData {
 	float pos[3], colour[3];

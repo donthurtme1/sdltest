@@ -20,6 +20,7 @@ static SDL_GLContext *context;
 static struct winsize {
 	int width, height;
 } winsize;
+cameradatatypedefstruct a;
 
 /* GL variables */
 static struct {
