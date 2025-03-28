@@ -57,7 +57,9 @@ vec3 blinnphong(in vec3 n, in vec3 lightdir, in vec3 viewdir, in vec3 light_irra
 }
 
 vec3 lightfalloff(in vec3 intensity, in float falloff, in vec3 light_pos, in vec3 surface_pos) {
+	vec3 diff = light_pos - surface_pos;
 	float r = distance(light_pos, surface_pos);
+	r = (diff.x * diff.x) + (diff.y * diff.y) + (diff.z * diff.z);
 	return intensity / (falloff * r * r);
 }
 

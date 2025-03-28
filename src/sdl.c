@@ -20,7 +20,6 @@ static SDL_GLContext *context;
 static struct winsize {
 	int width, height;
 } winsize;
-cameradatatypedefstruct a;
 
 /* GL variables */
 static struct {
@@ -204,7 +203,7 @@ int main(int argc, char *argv[]) {
 	/* Point light UBO */
 	GLuint ubuf_pointlight;
 	struct PointLightData plight = {
-		.pos = { 0.0f, 0.0f, 5.0f },
+		.pos = { 6.0f, 6.0f, -6.0f },
 		.colour = { 1.0f, 1.0f, 1.0f },
 		.falloff = 0.01f
 	};
@@ -217,7 +216,7 @@ int main(int argc, char *argv[]) {
 	GLuint ubuf_redmaterial;
 	struct MaterialData redmaterial = {
 		.diff_colour = { 0.8f, 0.2f, 0.2f },
-		.spec_colour = { 0.8f, 0.4f, 0.4f },
+		.spec_colour = { 0.8f, 0.8f, 0.8f },
 		.roughness = 15.0f
 	};
 	glGenBuffers(1, &ubuf_redmaterial);
