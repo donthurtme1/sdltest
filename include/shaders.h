@@ -50,13 +50,13 @@ layout(std140, binding = 3) uniform MaterialData {\n\
 layout(location = 0) smooth out vec3 out_vcolour;\n\
 \n\
 /* Functions */\n\
-vec3 blinnphong(in vec3 in_normal, in vec3 lightdir, in vec3 viewdir, in vec3 light_irradiance, in vec3 diffuse_colour, in vec3 specular_colour, in float roughness) {\n\
-	vec3 H = normalize(viewdir + lightdir);\n\
-	vec3 S = pow(max(dot(in_normal, H), 0.0f), roughness) * specular_colour;\n\
+vec3 blinnphong(in vec3 n, in vec3 lightdir, in vec3 viewdir, in vec3 light_irradiance, in vec3 diffuse_colour, in vec3 specular_colour, in float roughness) {\n\
+	vec3 H = normalize(viewdir + lightdir); /* half vector */\n\
+	vec3 spec = pow(max(dot(n, H), 0.0f), roughness) * specular_colour;\n\
 \n\
-	vec3 view_colour = diffuse_colour + S;\n\
-	view_colour *= max(dot(in_normal, lightdir), 0.0f);\n\
-	view_colour *= light_irradiance;\n\
+	vec3 view_colour = diffuse_colour + spec;\n\
+	view_colour *= max(dot(n, lightdir), 0.0f);\n\
+	//view_colour *= light_irradiance;\n\
 	return view_colour;\n\
 }\n\
 \n\
@@ -70,16 +70,14 @@ void main() {\n\
 	gl_Position = t_pos;\n\
 \n\
 	/* Transform the normal */\n\
-	vec3 t_normal = (mat_transform * vec4(in_normal, 0.0f)).xyz;\n\
+	vec3 t_normal = normalize((mat_transform * vec4(in_normal, 0.0f)).xyz);\n\
 	vec3 unit_pos = t_pos.xyz / t_pos.w;\n\
-	vec3 view_dir =  normalize(cam_pos - in_pos);\n\
-	vec3 light_dir = normalize(pl_pos - in_pos);\n\
+	vec3 view_dir =  normalize(cam_pos - unit_pos);\n\
+	vec3 light_dir = normalize(pl_pos - unit_pos);\n\
 \n\
 	/* Calculate falloff */\n\
-	vec3 light_irradiance = lightfalloff(pl_intensity, pl_falloff, pl_pos, in_pos) + 0.5f;\n\
-	out_vcolour = blinnphong(t_normal, light_dir, view_dir, light_irradiance,\n\
-			diff_colour, spec_colour, roughness);\n\
-	//out_vcolour = spec_colour;\n\
+	vec3 light_irradiance = lightfalloff(pl_intensity, pl_falloff, pl_pos, unit_pos);\n\
+	out_vcolour = blinnphong(t_normal, light_dir, view_dir, light_irradiance, diff_colour, spec_colour, roughness);\n\
 }\n\
 ";
 
