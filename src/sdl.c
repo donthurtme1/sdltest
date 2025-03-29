@@ -215,7 +215,7 @@ int main(int argc, char *argv[]) {
 	/* Material UBO */
 	GLuint ubuf_redmaterial;
 	struct MaterialData redmaterial = {
-		.diff_colour = { 0.8f, 0.2f, 0.2f },
+		.diff_colour = { 1.0f, 0.2f, 0.2f },
 		.spec_colour = { 0.8f, 0.8f, 0.8f },
 		.roughness = 15.0f
 	};

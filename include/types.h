@@ -19,19 +19,23 @@ struct Camera {
 };
 
 /* Structs for passing data to the vertex shader */
-typedef struct __attribute__((aligned(8))) CameraData {
-	float mat[16];
-	float pos[3];
-} cameradatatypedefstruct;
+#define GL_ALIGN __attribute__((aligned(16)))
 
-struct __attribute__((aligned(8))) PointLightData {
-	float pos[3], colour[3];
+struct CameraData {
+	GL_ALIGN float mat[16];
+	GL_ALIGN float pos[3];
+};
+
+struct PointLightData {
+	GL_ALIGN float pos[3];
+	GL_ALIGN float colour[3];
 	float falloff;
 };
 
-struct __attribute__((aligned(8))) MaterialData {
-	float diff_colour[3], spec_colour[3];
-	float roughness;
+struct MaterialData {
+	GL_ALIGN float diff_colour[3];
+	GL_ALIGN float spec_colour[3];
+	GL_ALIGN float roughness;
 };
 
 #endif
