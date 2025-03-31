@@ -72,4 +72,33 @@ static unsigned int cube_idata[] = {
 	5, 1, 0, 0, 4, 5, // Bottom face
 };
 
+
+/* GL_TRIANGLE_STRIP_ADJACENCY */
+static float stripcube_array[] = {
+	/* Position */       /* Normal */
+	-0.5f,  0.5f, -0.5f, 1.0f, 0.0f, 1.0f,
+	 0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 1.0f,
+	 0.5f,  0.5f,  0.5f, 0.0f, 1.0f, 1.0f,
+	 0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 0.0f,
+	 0.5f, -0.5f,  0.5f, 0.0f, 1.0f, 0.0f,
+	-0.5f, -0.5f,  0.5f, 0.0f, 0.0f, 0.0f,
+	-0.5f,  0.5f,  0.5f, 0.0f, 0.0f, 1.0f,
+	-0.5f, -0.5f, -0.5f, 1.0f, 0.0f, 0.0f,
+};
+
+static unsigned int stripcube_index[] = {
+	0, 1, 2,
+	3,
+	4,
+	5,
+	2,
+	6,
+	0,
+	5,
+	7,
+	3,
+	0,
+	1
+};
+
 #endif

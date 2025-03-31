@@ -1,7 +1,7 @@
 #ifndef INCLUDE_SHADERS_H
 #define INCLUDE_SHADERS_H
 
-const char *const perfragshader_vertex_glsl = "\
+const char *const shader_pf_vertex_glsl = "\
 #version 460\n\
 \n\
 /* Structures */\n\
@@ -33,11 +33,10 @@ void main() {\n\
 \n\
 	/* Output transformed normal vector */\n\
 	out_tnormal = normalize((mTransform * vec4(in_normal, 0.0f)).xyz);\n\
-	//out_tnormal = tnormal.xyz;\n\
 }\n\
 ";
 
-const char *const perfragshader_fragment_glsl = "\
+const char *const shader_pf_fragment_glsl = "\
 #version 460\n\
 \n\
 /* Structures */\n\

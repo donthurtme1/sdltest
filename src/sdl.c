@@ -127,7 +127,7 @@ int main(int argc, char *argv[]) {
 	/* Load, compile and link shaders */
 	int success;
 	gl.vshader = glCreateShader(GL_VERTEX_SHADER);
-	glShaderSource(gl.vshader, 1, &perfragshader_vertex_glsl, NULL);
+	glShaderSource(gl.vshader, 1, &shader_pf_vertex_glsl, NULL);
 	glCompileShader(gl.vshader);
 	glGetShaderiv(gl.vshader, GL_COMPILE_STATUS, &success);
 	if (success == GL_FALSE) {
@@ -137,7 +137,7 @@ int main(int argc, char *argv[]) {
 		fwrite(infolog, sizeof(char), len, stderr);
 	}
 	gl.fshader = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(gl.fshader, 1, &perfragshader_fragment_glsl, NULL);
+	glShaderSource(gl.fshader, 1, &shader_pf_fragment_glsl, NULL);
 	glCompileShader(gl.fshader);
 	glGetShaderiv(gl.fshader, GL_COMPILE_STATUS, &success);
 	if (success == GL_FALSE) {
