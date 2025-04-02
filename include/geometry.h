@@ -75,30 +75,32 @@ static unsigned int cube_idata[] = {
 
 /* GL_TRIANGLE_STRIP_ADJACENCY */
 static float stripcube_array[] = {
-	/* Position */       /* Normal */
-	-0.5f,  0.5f, -0.5f, 1.0f, 0.0f, 1.0f,
-	 0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 1.0f,
-	 0.5f,  0.5f,  0.5f, 0.0f, 1.0f, 1.0f,
-	 0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 0.0f,
-	 0.5f, -0.5f,  0.5f, 0.0f, 1.0f, 0.0f,
-	-0.5f, -0.5f,  0.5f, 0.0f, 0.0f, 0.0f,
-	-0.5f,  0.5f,  0.5f, 0.0f, 0.0f, 1.0f,
-	-0.5f, -0.5f, -0.5f, 1.0f, 0.0f, 0.0f,
+	/* Position */
+	-0.5f,  0.5f, -0.5f,
+	 0.5f,  0.5f, -0.5f,
+	 0.5f,  0.5f,  0.5f,
+	 0.5f, -0.5f, -0.5f,
+	 0.5f, -0.5f,  0.5f,
+	-0.5f, -0.5f,  0.5f,
+	-0.5f,  0.5f,  0.5f,
+	-0.5f, -0.5f, -0.5f,
+};
+static float stripcube_normal_array[] = {
+	 0.0f,  1.0f,  0.0f,
+	 1.0f,  0.0f,  0.0f,
+	 0.0f, -1.0f,  0.0f,
+	 0.0f,  0.0f,  1.0f,
+	-1.0f,  0.0f,  0.0f,
+	 0.0f,  0.0f, -1.0f,
 };
 
 static unsigned int stripcube_index[] = {
-	0, 1, 2,
-	3,
-	4,
-	5,
-	2,
-	6,
-	0,
-	5,
-	7,
-	3,
-	0,
-	1
+	0, 1, 2, 3, 4, 5, 2,
+	6, 0, 5, 7, 3, 0, 1,
+};
+static unsigned int stripcube_normal_index[] = {
+	0, 1, 1, 2, 3, 3,
+	0, 4, 4, 2, 5, 5, 
 };
 
 #endif

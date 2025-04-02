@@ -14,21 +14,8 @@ void handle_keydown(SDL_Event *event, struct InputSet *inputstate) {
 	extern struct Cube g_cube;
 	extern struct Camera g_camera;
 
-	float rotor[4] = { };
 	if (event->key.repeat == 0) {
 		switch (event->key.keysym.sym) {
-			case SDLK_q:
-				//rotor[0] = 1.0f;
-				//rotor[1] += 1.0f;
-				//normalise_rotor_bivec(rotor, 0.02f);
-				//combine_rotor(rotor, g_camera.rotor_df, g_camera.rotor_df);
-				break;
-			case SDLK_e:
-				//rotor[0] = 1.0f;
-				//rotor[1] -= 1.0f;
-				//normalise_rotor_bivec(rotor, 0.02f);
-				//combine_rotor(rotor, g_camera.rotor_df, g_camera.rotor_df);
-				break;
 			case SDLK_UP:
 				g_cube.rotor_delta[2] += 0.05f;
 				normalise_rotor_bivec(g_cube.rotor_delta, 0.05f);
@@ -69,18 +56,9 @@ void handle_keydown(SDL_Event *event, struct InputSet *inputstate) {
 
 void handle_keyup(SDL_Event *event, struct InputSet *inputstate) {
 	extern struct Cube g_cube;
-	static float rotor[4];
 
 	if (event->key.repeat == 0) {
 		switch (event->key.keysym.sym) {
-			case SDLK_q:
-				//g_camera.rotor_df[1] = 0.0f;
-				//normalise_rotor_bivec(g_camera.rotor_df, 0.02f);
-				break;
-			case SDLK_e:
-				//g_camera.rotor_df[1] = 0.0f;
-				//normalise_rotor_bivec(g_camera.rotor_df, 0.02f);
-				break;
 			case SDLK_UP:
 				g_cube.rotor_delta[2] = 0.0f;
 				normalise_rotor_bivec(g_cube.rotor_delta, 0.05f);

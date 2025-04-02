@@ -14,13 +14,6 @@
 #define IDENTITY_MATRIX { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 }
 #define die(str) { perror(str); exit(1); }
 
-/* SDL variables */
-static SDL_Window *window;
-static SDL_GLContext *context;
-static struct winsize {
-	int width, height;
-} winsize;
-
 /* GL variables */
 static struct {
 	GLuint vshader, fshader, program, vao, vbuf, ibuf;
@@ -30,6 +23,8 @@ static struct {
 	GLuint ubuf_camera;
 } gl;
 
+static struct IbufferArrayList ibuf_array_list;
+
 /* Global state */
 int g_targetfps = 128;
 float g_sens = 0.0002f; // Mouse sensitivity
@@ -38,6 +33,12 @@ struct InputSet g_inputstate;
 struct Cube g_cube;
 struct Camera g_camera;
 struct CameraData g_cameradata;
+
+/* Game state */
+struct GameState {
+	struct Player player;
+	struct Asteroid *load_asteroids; /* Loaded asteroids */
+} game_state;
 
 /* Function definitions */
 #include "rotor.c"
@@ -101,6 +102,13 @@ void framestep(void) {
 }
 
 int main(int argc, char *argv[]) {
+	/* SDL variables */
+	static SDL_Window *window;
+	static SDL_GLContext *context;
+	static struct winsize {
+		int width, height;
+	} winsize;
+
 	/* Initialise SDL2 and create SDL2 window and context */
 	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
@@ -118,7 +126,7 @@ int main(int argc, char *argv[]) {
 	glutInit(&argc, argv);
 	SDL_GetWindowSize(window, &winsize.width, &winsize.height);
 	glViewport(0, 0, winsize.width, winsize.height);
-	glClearColor(0.1f, 0.1f, 0.2f, 1.0f);
+	glClearColor(0.0f, 0.0f, 0.02f, 1.0f);
 	glCullFace(GL_BACK);
 	glEnable(GL_CULL_FACE);
 	glEnable(GL_DEPTH_TEST);
@@ -181,15 +189,13 @@ int main(int argc, char *argv[]) {
 		cblas_saxpy(3, 1.0f, (float [3]){ (i - 1) * 1.5f, (i - 1) * 1.5f, 3.0f }, 1, &gl.transform[i][12], 1);
 	}
 	cblas_saxpy(4, 1.0f, (float [4]){ 1.0f, 1.0f, 1.0f, 1.0f }, 1, gl.project, 5);
-	project_matrix(gl.project, 90.0f, (float)winsize.width / winsize.height,
-			0.015625f, 2048.015625f);
+	project_matrix(gl.project, 90.0f, (float)winsize.width / winsize.height, 0.015625f, 2048.015625f);
 
 	/* Cube transform UBOs */
 	glGenBuffers(3, gl.ubuf_transform);
 	for (int i = 0; i < 3; i++) {
 		glBindBuffer(GL_UNIFORM_BUFFER, gl.ubuf_transform[i]);
-		glBufferData(GL_UNIFORM_BUFFER, sizeof gl.transform[i], gl.transform[i],
-				GL_STATIC_DRAW);
+		glBufferData(GL_UNIFORM_BUFFER, sizeof gl.transform[i], gl.transform[i], GL_STATIC_DRAW);
 	}
 
 	/* Camera view-projection matrix and position UBO */
@@ -215,7 +221,7 @@ int main(int argc, char *argv[]) {
 	/* Material UBO */
 	GLuint ubuf_redmaterial;
 	struct MaterialData redmaterial = {
-		.diff_colour = { 1.0f, 0.2f, 0.2f },
+		.diff_colour = { 0.5f, 0.5f, 0.5f },
 		.spec_colour = { 0.8f, 0.8f, 0.8f },
 		.roughness = 15.0f
 	};

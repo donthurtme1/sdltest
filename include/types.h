@@ -1,6 +1,30 @@
 #ifndef TYPES_H
 #define TYPES_H
 
+#include <stddef.h>
+#include <stdint.h>
+
+#define align(a) __attribute__((aligned(a)))
+
+#define list_container(lp, type) (type *)(lp - offsetof(type, link))
+#define list_for_each(pos, type, head) \
+	for (type *pos = list_container(head->next, type); \
+		&pos->link != head; \
+		pos = list_container(pos->link.next, type))
+struct ListHead {
+	struct ListHead *next;
+	struct ListHead *prev;
+};
+
+#define length_of(a) (sizeof(a) / sizeof(a[0]))
+struct IbufferArrayList {
+	struct IbufferArrayList *next;
+	struct IbufferArrayList *prev;
+	uint32_t array[60];
+} align(16);
+
+
+
 /* Struct containing which buttons are being pressed */
 struct InputSet {
 	int right, up, forward;
@@ -18,24 +42,39 @@ struct Camera {
 	float rotor[4];
 };
 
-/* Structs for passing data to the vertex shader */
-#define GL_ALIGN __attribute__((aligned(16)))
 
+
+/* Game */
+struct Player {
+	float health;
+	align(8) float pos[3];
+	align(8) float velocity[3];
+	align(8) float accel[3];
+} align(64);
+
+struct Asteroid {
+	align(8) float pos[3];
+	align(8) float velocity[3];
+	align(8) float accel[3];
+	float rotor[4];
+} align(64);
+
+/* Structs for passing data to the vertex shader */
 struct CameraData {
-	GL_ALIGN float mat[16];
-	GL_ALIGN float pos[3];
+	align(16) float mat[16];
+	align(16) float pos[3];
 };
 
 struct PointLightData {
-	GL_ALIGN float pos[3];
-	GL_ALIGN float colour[3];
+	align(16) float pos[3];
+	align(16) float colour[3];
 	float falloff;
 };
 
 struct MaterialData {
-	GL_ALIGN float diff_colour[3];
-	GL_ALIGN float spec_colour[3];
-	GL_ALIGN float roughness;
+	align(16) float diff_colour[3];
+	align(16) float spec_colour[3];
+	align(16) float roughness;
 };
 
 #endif
