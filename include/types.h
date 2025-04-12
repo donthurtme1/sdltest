@@ -20,7 +20,7 @@ struct ListHead {
 struct IbufferArrayList {
 	struct IbufferArrayList *next;
 	struct IbufferArrayList *prev;
-	uint32_t array[60];
+	uint32_t array[60]; /* List of GL index buffer objects */
 } align(16);
 
 
@@ -46,18 +46,14 @@ struct Camera {
 
 /* Game */
 struct Player {
+	align(8) float pos[3], velocity[3], accel[3];
 	float health;
-	align(8) float pos[3];
-	align(8) float velocity[3];
-	align(8) float accel[3];
-} align(64);
+};
 
 struct Asteroid {
-	align(8) float pos[3];
-	align(8) float velocity[3];
-	align(8) float accel[3];
-	float rotor[4];
-} align(64);
+	align(8) float pos[3], velocity[3], accel[3];
+	align(8) float rotor[4], rotor_d[4];
+};
 
 /* Structs for passing data to the vertex shader */
 struct CameraData {

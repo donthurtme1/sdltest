@@ -219,16 +219,16 @@ int main(int argc, char *argv[]) {
 	glBindBufferBase(GL_UNIFORM_BUFFER, 2, ubuf_pointlight);
 
 	/* Material UBO */
-	GLuint ubuf_redmaterial;
+	GLuint ubuf_asteroidmaterial;
 	struct MaterialData redmaterial = {
 		.diff_colour = { 0.5f, 0.5f, 0.5f },
 		.spec_colour = { 0.8f, 0.8f, 0.8f },
 		.roughness = 15.0f
 	};
-	glGenBuffers(1, &ubuf_redmaterial);
-	glBindBuffer(GL_UNIFORM_BUFFER, ubuf_redmaterial);
+	glGenBuffers(1, &ubuf_asteroidmaterial);
+	glBindBuffer(GL_UNIFORM_BUFFER, ubuf_asteroidmaterial);
 	glBufferData(GL_UNIFORM_BUFFER, sizeof redmaterial, &redmaterial, GL_STATIC_DRAW);
-	glBindBufferBase(GL_UNIFORM_BUFFER, 3, ubuf_redmaterial);
+	glBindBufferBase(GL_UNIFORM_BUFFER, 3, ubuf_asteroidmaterial);
 
 	/* Initialise rotors */
 	g_cube.rotor[0] = g_cube.rotor_delta[0] = 1.0f;
