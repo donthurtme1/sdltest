@@ -1,16 +1,6 @@
 #ifndef GEOMETRY_H
 #define GEOMETRY_H
 
-static float square_vdata[] = {
-	 0.5f,  0.5f, 0.0f,
-	-0.5f,  0.5f, 0.0f,
-	-0.5f, -0.5f, 0.0f,
-	 0.5f, -0.5f, 0.0f,
-};
-static unsigned int square_idata[] = {
-	0, 1, 2, 2, 3, 0
-};
-
 static float ncube_vdata[] = {
     // Create back face
      0.5f,  0.5f, -0.5f,  0.0f,  0.0f,  1.0f,
@@ -73,8 +63,47 @@ static unsigned int cube_idata[] = {
 };
 
 
+static float cube_vertices[] = {
+	/* Position */
+	 0.5f,  0.5f,  0.5f,
+	 0.5f, -0.5f,  0.5f,
+	-0.5f, -0.5f,  0.5f,
+	-0.5f,  0.5f,  0.5f,
+	 0.5f,  0.5f, -0.5f,
+	 0.5f, -0.5f, -0.5f,
+	-0.5f, -0.5f, -0.5f,
+	-0.5f,  0.5f, -0.5f,
+};
+
+static unsigned int cube_vertex_indices[] = {
+	/* Position index */
+	0, 4, 5, 5, 1, 0, /* right face */
+	3, 2, 6, 6, 7, 3, /* left face */
+	0, 3, 7, 7, 4, 0, /* top face */
+	1, 5, 6, 6, 2, 1, /* bottom face */
+	4, 7, 6, 6, 5, 4, /* front face */
+	0, 1, 2, 2, 3, 0, /* back face */
+};
+
+static float cube_normals[] = {
+	/* Normal */
+	 1.0f,  0.0f,  0.0f,
+	-1.0f,  0.0f,  0.0f,
+	 0.0f,  1.0f,  0.0f,
+	 0.0f, -1.0f,  0.0f,
+	 0.0f,  0.0f,  1.0f,
+	 0.0f,  0.0f, -1.0f,
+};
+
+static unsigned int cube_normal_indices[] = {
+	/* Normal index */
+	0, 1, 2, 3, 4, 5,
+};
+
+
+
 /* GL_TRIANGLE_STRIP_ADJACENCY */
-static float stripcube_array[] = {
+static float stripcube_vertex_array[] = {
 	/* Position */
 	-0.5f,  0.5f, -0.5f,
 	 0.5f,  0.5f, -0.5f,

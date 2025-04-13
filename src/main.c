@@ -16,7 +16,7 @@
 
 /* GL variables */
 static struct {
-	GLuint vshader, fshader, program, vao, vbuf, ibuf;
+	GLuint vshader, fshader, shader_program, vertex_arrayobj, vertex_bufobj, index_bufobj;
 	float transform[3][16];
 	float view[16], project[16], viewproject[16];
 	GLuint ubuf_transform[3], ubuf_viewproject;
@@ -26,18 +26,20 @@ static struct {
 static struct IbufferArrayList ibuf_array_list;
 
 /* Global state */
-int g_targetfps = 128;
-float g_sens = 0.0002f; // Mouse sensitivity
+struct GlobalState {
+	int targetfps;
+	float sens; /* Mouse sensitivity */
 
-struct InputSet g_inputstate;
-struct Cube g_cube;
-struct Camera g_camera;
-struct CameraData g_cameradata;
+	struct InputSet inputstate;
+	struct Cube cube;
+	struct Camera camera;
+	struct CameraData cameradata;
+} global;
 
 /* Game state */
 struct GameState {
 	struct Player player;
-	struct Asteroid *load_asteroids; /* Loaded asteroids */
+	struct Asteroid *asteroids; /* Loaded asteroids */
 } game_state;
 
 /* Function definitions */
@@ -53,10 +55,10 @@ void pollevents(SDL_Event *event) {
 	while (SDL_PollEvent(event)) {
 		switch (event->type) {
 			case SDL_KEYDOWN:
-				handle_keydown(event, &g_inputstate);
+				handle_keydown(event, &global.inputstate);
 				break;
 			case SDL_KEYUP:
-				handle_keyup(event, &g_inputstate);
+				handle_keyup(event, &global.inputstate);
 				break;
 			case SDL_MOUSEMOTION:
 				handle_mouse(event);
@@ -69,36 +71,33 @@ void pollevents(SDL_Event *event) {
 
 void framestep(void) {
 	/* Cube */
-	combine_rotor(g_cube.rotor, g_cube.rotor_delta, g_cube.rotor);
+	combine_rotor(global.cube.rotor, global.cube.rotor_delta, global.cube.rotor);
 	for (int i = 0; i < 3; i++) {
-		rotor_to_matrix(gl.transform[i], g_cube.rotor);
+		rotor_to_matrix(gl.transform[i], global.cube.rotor);
 		cblas_saxpy(3, 1.0f, (float [3]){ (i - 1) * 1.5f, (i - 1) * 1.5f, 3.0f }, 1, &gl.transform[i][12], 1);
 		glBindBuffer(GL_UNIFORM_BUFFER, gl.ubuf_transform[i]);
 		glBufferData(GL_UNIFORM_BUFFER, sizeof gl.transform[i], gl.transform[i], GL_STATIC_DRAW);
 	}
 
-	/* Camera transform */
-	//combine_rotor(g_camera.rotor_df, g_camera.rotor, g_camera.rotor);
-
 	/* Camera position */
 	float camera_dpos[3];
-	cblas_scopy(3, (float [3]){ g_inputstate.right, g_inputstate.up, g_inputstate.forward }, 1, camera_dpos, 1);
+	cblas_scopy(3, (float [3]){ global.inputstate.right, global.inputstate.up, global.inputstate.forward }, 1, camera_dpos, 1);
 	normalise_vec(camera_dpos, 0.02f);
-	apply_rotor(g_camera.rotor, camera_dpos);
-	cblas_saxpy(3, 1.0f, camera_dpos, 1, g_camera.pos, 1);
+	apply_rotor(global.camera.rotor, camera_dpos);
+	cblas_saxpy(3, 1.0f, camera_dpos, 1, global.camera.pos, 1);
 
 	/* Camera matrix */
 	float camrotation[16], camtransform[16] = IDENTITY_MATRIX;
-	rotor_to_matrix(camrotation, (float [4]){ g_camera.rotor[0], -g_camera.rotor[1], -g_camera.rotor[2], -g_camera.rotor[3] });
-	cblas_saxpy(3, -1.0f, g_camera.pos, 1, &camtransform[12], 1);
+	rotor_to_matrix(camrotation, (float [4]){ global.camera.rotor[0], -global.camera.rotor[1], -global.camera.rotor[2], -global.camera.rotor[3] });
+	cblas_saxpy(3, -1.0f, global.camera.pos, 1, &camtransform[12], 1);
 	cblas_sgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, 4, 4, 4, 1.0f, camrotation, 4, camtransform, 4, 0.0f, gl.view, 4);
 	cblas_sgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, 4, 4, 4, 1.0f, gl.project, 4, gl.view, 4, 0.0f, gl.viewproject, 4);
 
 	/* Update camera uniform buffer */
-	memcpy(g_cameradata.mat, gl.viewproject, sizeof(float [16]));
-	memcpy(g_cameradata.pos, g_camera.pos, sizeof(float [3]));
+	memcpy(global.cameradata.mat, gl.viewproject, sizeof(float [16]));
+	memcpy(global.cameradata.pos, global.camera.pos, sizeof(float [3]));
 	glBindBuffer(GL_UNIFORM_BUFFER, gl.ubuf_camera);
-	glBufferData(GL_UNIFORM_BUFFER, sizeof g_cameradata, &g_cameradata, GL_STATIC_DRAW);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof global.cameradata, &global.cameradata, GL_STATIC_DRAW);
 }
 
 int main(int argc, char *argv[]) {
@@ -108,6 +107,9 @@ int main(int argc, char *argv[]) {
 	static struct winsize {
 		int width, height;
 	} winsize;
+
+	global.targetfps = 128;
+	global.sens = 0.0002f;
 
 	/* Initialise SDL2 and create SDL2 window and context */
 	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
@@ -155,28 +157,30 @@ int main(int argc, char *argv[]) {
 		fwrite(infolog, sizeof(char), len, stderr);
 	}
 
-	gl.program = glCreateProgram();
-	glAttachShader(gl.program, gl.vshader);
-	glAttachShader(gl.program, gl.fshader);
-	glLinkProgram(gl.program);
-	glGetProgramiv(gl.program, GL_LINK_STATUS, &success);
+	gl.shader_program = glCreateProgram();
+	glAttachShader(gl.shader_program, gl.vshader);
+	glAttachShader(gl.shader_program, gl.fshader);
+	glLinkProgram(gl.shader_program);
+	glGetProgramiv(gl.shader_program, GL_LINK_STATUS, &success);
 	if (success == GL_FALSE) {
 		int len = 0;
 		char infolog[128];
-		glGetProgramInfoLog(gl.program, sizeof infolog, &len, infolog);
+		glGetProgramInfoLog(gl.shader_program, sizeof infolog, &len, infolog);
 		fwrite(infolog, sizeof(char), len, stderr);
 	}
-	glUseProgram(gl.program);
+	glUseProgram(gl.shader_program);
 
 	/* Create vertex array, vertex buffer and index buffer objects */
-	glCreateVertexArrays(1, &gl.vao);
-	glBindVertexArray(gl.vao);
-	glGenBuffers(1, &gl.vbuf);
-	glGenBuffers(1, &gl.ibuf);
+	int normal_bufobj;
 
-	glBindBuffer(GL_ARRAY_BUFFER, gl.vbuf);
+	glCreateVertexArrays(1, &gl.vertex_arrayobj);
+	glBindVertexArray(gl.vertex_arrayobj);
+	glGenBuffers(1, &gl.vertex_bufobj);
+	glGenBuffers(1, &gl.index_bufobj);
+
+	glBindBuffer(GL_ARRAY_BUFFER, gl.vertex_bufobj);
 	glBufferData(GL_ARRAY_BUFFER, sizeof ncube_vdata, ncube_vdata, GL_STATIC_DRAW);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gl.ibuf);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gl.index_bufobj);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof ncube_idata, ncube_idata, GL_STATIC_DRAW);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)0);
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)12);
@@ -199,11 +203,12 @@ int main(int argc, char *argv[]) {
 	}
 
 	/* Camera view-projection matrix and position UBO */
-	memcpy(g_cameradata.mat, gl.viewproject, sizeof(float [16]));
-	memcpy(g_cameradata.pos, g_camera.pos, sizeof(float [3]));
+	memcpy(global.cameradata.mat, gl.viewproject, sizeof(float [16]));
+	memcpy(global.cameradata.pos, global.camera.pos, sizeof(float [3]));
 	glGenBuffers(1, &gl.ubuf_camera);
 	glBindBuffer(GL_UNIFORM_BUFFER, gl.ubuf_camera);
-	glBufferData(GL_UNIFORM_BUFFER, sizeof g_cameradata, &g_cameradata, GL_DYNAMIC_DRAW);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof global.cameradata, &global.cameradata, GL_DYNAMIC_DRAW);
+
 	glBindBufferBase(GL_UNIFORM_BUFFER, 1, gl.ubuf_camera);
 
 	/* Point light UBO */
@@ -231,8 +236,8 @@ int main(int argc, char *argv[]) {
 	glBindBufferBase(GL_UNIFORM_BUFFER, 3, ubuf_asteroidmaterial);
 
 	/* Initialise rotors */
-	g_cube.rotor[0] = g_cube.rotor_delta[0] = 1.0f;
-	g_camera.rotor[0] = 1.0f;
+	global.cube.rotor[0] = global.cube.rotor_delta[0] = 1.0f;
+	global.camera.rotor[0] = 1.0f;
 
 	/* Set game clock */
 	struct timespec monotime;
@@ -257,7 +262,7 @@ int main(int argc, char *argv[]) {
 		SDL_GL_SwapWindow(window);
 
 		/* Frame advance */
-		monotime.tv_nsec += (1000000000 / g_targetfps);
+		monotime.tv_nsec += (1000000000 / global.targetfps);
 		if (monotime.tv_nsec >= 1000000000) {
 			monotime.tv_nsec -= 1000000000;
 			monotime.tv_sec++;
