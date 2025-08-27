@@ -63,6 +63,8 @@ static unsigned int cube_idata[] = {
 };
 
 
+
+/* Good cube data */
 static float cube_vertices[] = {
 	/* Position */
 	 0.5f,  0.5f,  0.5f,

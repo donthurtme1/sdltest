@@ -51,7 +51,7 @@ struct Player {
 };
 
 struct Asteroid {
-	align(8) float pos[3], velocity[3], accel[3];
+	align(8) float pos[3], velocity[3];
 	align(8) float rotor[4], rotor_d[4];
 };
 

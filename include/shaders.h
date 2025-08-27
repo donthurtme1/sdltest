@@ -1,7 +1,7 @@
 #ifndef INCLUDE_SHADERS_H
 #define INCLUDE_SHADERS_H
 
-const char *const shader_pf_vertex_glsl = "\
+static const char *sth_shader_pf_vertex_src = "\
 #version 460\n\
 \n\
 /* Structures */\n\
@@ -36,7 +36,7 @@ void main() {\n\
 }\n\
 ";
 
-const char *const shader_pf_fragment_glsl = "\
+static const char *sth_shader_pf_fragment_src = "\
 #version 460\n\
 \n\
 /* Structures */\n\

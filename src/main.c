@@ -12,11 +12,15 @@
 #include <SDL2/SDL.h>
 
 #define IDENTITY_MATRIX { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 }
+#define LENGTH(x) (sizeof(x) / sizeof(x[0]))
 #define die(str) { perror(str); exit(1); }
 
 /* GL variables */
 static struct {
-	GLuint vshader, fshader, shader_program, vertex_arrayobj, vertex_bufobj, index_bufobj;
+	GLuint vshader, fshader, shader_program;
+	GLuint cube_arrayobj,
+		   vertex_bufobj, vertidx_bufobj,
+		   normal_bufobj, normidx_bufobj;
 	float transform[3][16];
 	float view[16], project[16], viewproject[16];
 	GLuint ubuf_transform[3], ubuf_viewproject;
@@ -39,7 +43,8 @@ struct GlobalState {
 /* Game state */
 struct GameState {
 	struct Player player;
-	struct Asteroid *asteroids; /* Loaded asteroids */
+	int n_asteroids;
+	struct Asteroid asteroids[64]; /* Loaded asteroids */
 } game_state;
 
 /* Function definitions */
@@ -49,6 +54,7 @@ struct GameState {
 
 static void pollevents(SDL_Event *event);
 static void framestep(void);
+static void framestep_asteroids(void);
 
 /* This function is a possible cancelation point */
 void pollevents(SDL_Event *event) {
@@ -69,12 +75,25 @@ void pollevents(SDL_Event *event) {
 	}
 }
 
+void framestep_asteroids(void) {
+	for (int i = 0;
+			i < game_state.n_asteroids &&
+			i < LENGTH(game_state.asteroids);
+			i++) {
+		cblas_saxpy(3, 1.0f,
+				game_state.asteroids[i].velocity, 1,
+				game_state.asteroids[i].pos, 1);
+	}
+}
+
 void framestep(void) {
 	/* Cube */
 	combine_rotor(global.cube.rotor, global.cube.rotor_delta, global.cube.rotor);
 	for (int i = 0; i < 3; i++) {
 		rotor_to_matrix(gl.transform[i], global.cube.rotor);
-		cblas_saxpy(3, 1.0f, (float [3]){ (i - 1) * 1.5f, (i - 1) * 1.5f, 3.0f }, 1, &gl.transform[i][12], 1);
+		cblas_saxpy(3, 1.0f,
+				(float [3]){ (i - 1) * 1.5f, (i - 1) * 1.5f, 3.0f }, 1,
+				&gl.transform[i][12], 1);
 		glBindBuffer(GL_UNIFORM_BUFFER, gl.ubuf_transform[i]);
 		glBufferData(GL_UNIFORM_BUFFER, sizeof gl.transform[i], gl.transform[i], GL_STATIC_DRAW);
 	}
@@ -108,8 +127,10 @@ int main(int argc, char *argv[]) {
 		int width, height;
 	} winsize;
 
+	/* Initialise global variables */
 	global.targetfps = 128;
 	global.sens = 0.0002f;
+	game_state.n_asteroids = 0;
 
 	/* Initialise SDL2 and create SDL2 window and context */
 	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
@@ -137,7 +158,7 @@ int main(int argc, char *argv[]) {
 	/* Load, compile and link shaders */
 	int success;
 	gl.vshader = glCreateShader(GL_VERTEX_SHADER);
-	glShaderSource(gl.vshader, 1, &shader_pf_vertex_glsl, NULL);
+	glShaderSource(gl.vshader, 1, &sth_shader_pf_vertex_src, NULL);
 	glCompileShader(gl.vshader);
 	glGetShaderiv(gl.vshader, GL_COMPILE_STATUS, &success);
 	if (success == GL_FALSE) {
@@ -147,7 +168,7 @@ int main(int argc, char *argv[]) {
 		fwrite(infolog, sizeof(char), len, stderr);
 	}
 	gl.fshader = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(gl.fshader, 1, &shader_pf_fragment_glsl, NULL);
+	glShaderSource(gl.fshader, 1, &sth_shader_pf_fragment_src, NULL);
 	glCompileShader(gl.fshader);
 	glGetShaderiv(gl.fshader, GL_COMPILE_STATUS, &success);
 	if (success == GL_FALSE) {
@@ -171,16 +192,13 @@ int main(int argc, char *argv[]) {
 	glUseProgram(gl.shader_program);
 
 	/* Create vertex array, vertex buffer and index buffer objects */
-	int normal_bufobj;
-
-	glCreateVertexArrays(1, &gl.vertex_arrayobj);
-	glBindVertexArray(gl.vertex_arrayobj);
-	glGenBuffers(1, &gl.vertex_bufobj);
-	glGenBuffers(1, &gl.index_bufobj);
+	glCreateVertexArrays(1, &gl.cube_arrayobj);
+	glBindVertexArray(gl.cube_arrayobj);
+	glGenBuffers(4, &gl.vertex_bufobj); /* Buffer objects are contiguous */
 
 	glBindBuffer(GL_ARRAY_BUFFER, gl.vertex_bufobj);
 	glBufferData(GL_ARRAY_BUFFER, sizeof ncube_vdata, ncube_vdata, GL_STATIC_DRAW);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gl.index_bufobj);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gl.vertidx_bufobj);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof ncube_idata, ncube_idata, GL_STATIC_DRAW);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)0);
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)12);
@@ -249,6 +267,7 @@ int main(int argc, char *argv[]) {
 		pollevents(&event);
 
 		/* Game */
+		framestep_asteroids();
 		framestep();
 
 		/* Render */
