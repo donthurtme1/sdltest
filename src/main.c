@@ -5,7 +5,6 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include "shaders.h"
 #include "types.h"
 #include "geometry.h"
 
