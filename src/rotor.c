@@ -1,7 +1,7 @@
 #ifndef ROTOR_C
 #define ROTOR_C
 
-#include <openblas/cblas.h>
+#include <cblas.h>
 #include <math.h>
 #include <string.h>
 

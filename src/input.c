@@ -1,7 +1,7 @@
 #ifndef INPUT_C
 #define INPUT_C
 
-#include <openblas/cblas.h>
+#include <cblas.h>
 #include <SDL2/SDL.h>
 #include "rotor.c"
 #include "types.h"

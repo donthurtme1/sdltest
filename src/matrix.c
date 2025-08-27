@@ -1,7 +1,7 @@
 #ifndef MATRIX_C
 #define MATRIX_C
 
-#include <openblas/cblas.h>
+#include <cblas.h>
 #include <math.h>
 #include <stdio.h>
 
