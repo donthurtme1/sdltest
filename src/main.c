@@ -1,6 +1,10 @@
+#include <fcntl.h>
 #include <openblas/cblas.h>
 #include <time.h>
 #include <string.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include "shaders.h"
 #include "types.h"
 #include "geometry.h"
@@ -52,9 +56,48 @@ struct GameState {
 #include "matrix.c"
 #include "input.c"
 
+static void createshader(GLuint shader, const char *fname);
 static void pollevents(SDL_Event *event);
 static void framestep(void);
 static void framestep_asteroids(void);
+
+/*
+ * Convert shader source file to a glsl shader,
+ * then compile and check for errors.
+ */
+void createshader(GLuint shader, const char *fname) {
+	/* Open and stat source file */
+	int fd = open(fname, O_RDONLY);
+	if (fd == -1)
+		printf("open: %m\n");
+	struct stat finfo;
+	fstat(fd, &finfo);
+
+	/* Memory map the source file */
+	char *src = mmap(NULL, finfo.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+	if (src == MAP_FAILED) {
+		perror("mmap");
+		exit(1);
+	}
+
+	/* Add source to the shader, then close mmap and file */
+	glShaderSource(shader, 1, (const char **)&src, (int *)&finfo.st_size);
+	munmap(src, finfo.st_size);
+	close(fd);
+
+	/* Compile shader */
+	int compilation_status = 0;
+	glCompileShader(shader);
+	glGetShaderiv(shader, GL_COMPILE_STATUS, &compilation_status);
+	if (compilation_status == GL_FALSE) {
+		int len;
+		glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &len);
+
+		char log[len];
+		glGetShaderInfoLog(shader, len, &len, log);
+		fwrite(log, sizeof(char), len, stdout);
+	}
+}
 
 /* This function is a possible cancelation point */
 void pollevents(SDL_Event *event) {
@@ -158,25 +201,9 @@ int main(int argc, char *argv[]) {
 	/* Load, compile and link shaders */
 	int success;
 	gl.vshader = glCreateShader(GL_VERTEX_SHADER);
-	glShaderSource(gl.vshader, 1, &sth_shader_pf_vertex_src, NULL);
-	glCompileShader(gl.vshader);
-	glGetShaderiv(gl.vshader, GL_COMPILE_STATUS, &success);
-	if (success == GL_FALSE) {
-		int len = 0;
-		char infolog[128];
-		glGetShaderInfoLog(gl.vshader, sizeof infolog, &len, infolog);
-		fwrite(infolog, sizeof(char), len, stderr);
-	}
+	createshader(gl.vshader, "shader/pf_vertex.glsl");
 	gl.fshader = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(gl.fshader, 1, &sth_shader_pf_fragment_src, NULL);
-	glCompileShader(gl.fshader);
-	glGetShaderiv(gl.fshader, GL_COMPILE_STATUS, &success);
-	if (success == GL_FALSE) {
-		int len = 0;
-		char infolog[128];
-		glGetShaderInfoLog(gl.fshader, sizeof infolog, &len, infolog);
-		fwrite(infolog, sizeof(char), len, stderr);
-	}
+	createshader(gl.fshader, "shader/pf_fragment.glsl");
 
 	gl.shader_program = glCreateProgram();
 	glAttachShader(gl.shader_program, gl.vshader);
