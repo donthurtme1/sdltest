@@ -1,5 +1,5 @@
+#include <cblas.h>
 #include <fcntl.h>
-#include <openblas/cblas.h>
 #include <time.h>
 #include <string.h>
 #include <sys/mman.h>
@@ -56,7 +56,7 @@ struct GameState {
 #include "matrix.c"
 #include "input.c"
 
-static void createshader(GLuint shader, const char *fname);
+static void loadshader(GLuint shader, const char *fname);
 static void pollevents(SDL_Event *event);
 static void framestep(void);
 static void framestep_asteroids(void);
@@ -65,7 +65,7 @@ static void framestep_asteroids(void);
  * Convert shader source file to a glsl shader,
  * then compile and check for errors.
  */
-void createshader(GLuint shader, const char *fname) {
+void loadshader(GLuint shader, const char *fname) {
 	/* Open and stat source file */
 	int fd = open(fname, O_RDONLY);
 	if (fd == -1)
@@ -201,9 +201,9 @@ int main(int argc, char *argv[]) {
 	/* Load, compile and link shaders */
 	int success;
 	gl.vshader = glCreateShader(GL_VERTEX_SHADER);
-	createshader(gl.vshader, "shader/pf_vertex.glsl");
+	loadshader(gl.vshader, "shader/pf_vertex.glsl");
 	gl.fshader = glCreateShader(GL_FRAGMENT_SHADER);
-	createshader(gl.fshader, "shader/pf_fragment.glsl");
+	loadshader(gl.fshader, "shader/pf_fragment.glsl");
 
 	gl.shader_program = glCreateProgram();
 	glAttachShader(gl.shader_program, gl.vshader);
