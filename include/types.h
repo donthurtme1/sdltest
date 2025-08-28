@@ -70,7 +70,7 @@ struct PointLightData {
 struct MaterialData {
 	align(16) float diff_colour[3];
 	align(16) float spec_colour[3];
-	align(16) float roughness;
+	float roughness;
 };
 
 #endif
